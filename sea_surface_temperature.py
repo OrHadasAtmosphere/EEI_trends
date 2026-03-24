@@ -13,6 +13,7 @@ import xarray as xr
 
 import matplotlib.pyplot as plt
 from map_plot_utils import wrap_global_field
+from trend_utils import fit_trend_map
 
 
 SEASONS = ("DJF", "MAM", "JJA", "SON")
@@ -124,41 +125,6 @@ def seasonal_means(da: xr.DataArray, season: str) -> xr.DataArray:
     return group_complete_means(season_da, labels, expected_count=3, output_dim="year")
 
 
-def compute_trend_map(da: xr.DataArray, time_dim: str = "year") -> xr.DataArray:
-    spatial_dims = [dim for dim in da.dims if dim != time_dim]
-    ordered = da.transpose(time_dim, *spatial_dims).astype(np.float64)
-
-    x = ordered[time_dim].values.astype(np.float64)
-    y = ordered.values.reshape(ordered.sizes[time_dim], -1)
-
-    mask = np.isfinite(y)
-    x2d = x[:, None]
-    valid_counts = mask.sum(axis=0)
-
-    y_sum = np.where(mask, y, 0.0).sum(axis=0)
-    x_sum = np.where(mask, x2d, 0.0).sum(axis=0)
-
-    enough_points = valid_counts >= 2
-    x_mean = np.full(y.shape[1], np.nan, dtype=np.float64)
-    y_mean = np.full(y.shape[1], np.nan, dtype=np.float64)
-    x_mean[enough_points] = x_sum[enough_points] / valid_counts[enough_points]
-    y_mean[enough_points] = y_sum[enough_points] / valid_counts[enough_points]
-
-    covariance = np.where(mask, (x2d - x_mean) * (y - y_mean), 0.0).sum(axis=0)
-    variance = np.where(mask, (x2d - x_mean) ** 2, 0.0).sum(axis=0)
-
-    slope = np.full(y.shape[1], np.nan, dtype=np.float32)
-    valid = enough_points & (variance > 0)
-    slope[valid] = (covariance[valid] / variance[valid]).astype(np.float32)
-
-    coords = {dim: ordered[dim] for dim in spatial_dims}
-    return xr.DataArray(
-        slope.reshape(*(ordered.sizes[dim] for dim in spatial_dims)),
-        coords=coords,
-        dims=spatial_dims,
-    )
-
-
 def load_monthly_sst(path: Path = INPUT_FILE) -> xr.DataArray:
     ds = xr.open_dataset(path).sortby("latitude")
     rename_map = {
@@ -177,7 +143,7 @@ def load_monthly_sst(path: Path = INPUT_FILE) -> xr.DataArray:
 def annual_mean_trend(input_file: Path = INPUT_FILE) -> tuple[xr.DataArray, xr.DataArray]:
     sst = load_monthly_sst(input_file)
     yearly_mean = annual_means(sst)
-    trend = compute_trend_map(yearly_mean)
+    trend = fit_trend_map(yearly_mean)["slope"]
     trend.name = "annual_sst_trend"
     trend.attrs.update(
         long_name="Annual mean sea surface temperature trend",
@@ -299,7 +265,7 @@ def seasonal_trend(
 
     for season in SEASONS:
         seasonal_yearly_mean = seasonal_means(sst, season)
-        trend_map = compute_trend_map(seasonal_yearly_mean).expand_dims(season=[season])
+        trend_map = fit_trend_map(seasonal_yearly_mean)["slope"].expand_dims(season=[season])
         trend_maps.append(trend_map)
         sample_counts.append(int(seasonal_yearly_mean.sizes["year"]))
         start_years.append(int(seasonal_yearly_mean["year"].min()))

@@ -6,6 +6,8 @@ from pathlib import Path
 import numpy as np
 import xarray as xr
 
+from trend_utils import fit_trend_map
+
 
 PERIODS = ("annual", "DJF", "MAM", "JJA", "SON")
 SEASON_LABELS = {
@@ -93,41 +95,6 @@ def seasonal_means(da: xr.DataArray, season: str) -> xr.DataArray:
     return group_complete_means(season_da, labels, expected_count=3, output_dim="year")
 
 
-def compute_trend_map(da: xr.DataArray, time_dim: str = "year") -> xr.DataArray:
-    spatial_dims = [dim for dim in da.dims if dim != time_dim]
-    ordered = da.transpose(time_dim, *spatial_dims).astype(np.float64)
-
-    x = ordered[time_dim].values.astype(np.float64)
-    y = ordered.values.reshape(ordered.sizes[time_dim], -1)
-
-    mask = np.isfinite(y)
-    x2d = x[:, None]
-    valid_counts = mask.sum(axis=0)
-
-    y_sum = np.where(mask, y, 0.0).sum(axis=0)
-    x_sum = np.where(mask, x2d, 0.0).sum(axis=0)
-
-    x_mean = np.full(y.shape[1], np.nan, dtype=np.float64)
-    y_mean = np.full(y.shape[1], np.nan, dtype=np.float64)
-    enough_points = valid_counts >= 2
-    x_mean[enough_points] = x_sum[enough_points] / valid_counts[enough_points]
-    y_mean[enough_points] = y_sum[enough_points] / valid_counts[enough_points]
-
-    covariance = np.where(mask, (x2d - x_mean) * (y - y_mean), 0.0).sum(axis=0)
-    variance = np.where(mask, (x2d - x_mean) ** 2, 0.0).sum(axis=0)
-
-    slope = np.full(y.shape[1], np.nan, dtype=np.float32)
-    valid = enough_points & (variance > 0)
-    slope[valid] = (covariance[valid] / variance[valid]).astype(np.float32)
-
-    coords = {dim: ordered[dim] for dim in spatial_dims}
-    return xr.DataArray(
-        slope.reshape(*(ordered.sizes[dim] for dim in spatial_dims)),
-        coords=coords,
-        dims=spatial_dims,
-    )
-
-
 def build_period_trends(da: xr.DataArray) -> tuple[xr.DataArray, list[int]]:
     trend_maps: list[xr.DataArray] = []
     sample_counts: list[int] = []
@@ -138,7 +105,7 @@ def build_period_trends(da: xr.DataArray) -> tuple[xr.DataArray, list[int]]:
         else:
             averaged = seasonal_means(da, period)
 
-        trend_map = compute_trend_map(averaged, time_dim="year").expand_dims(period=[period])
+        trend_map = fit_trend_map(averaged, time_dim="year")["slope"].expand_dims(period=[period])
         trend_maps.append(trend_map)
         sample_counts.append(int(averaged.sizes["year"]))
 

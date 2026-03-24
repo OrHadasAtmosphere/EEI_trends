@@ -7,6 +7,8 @@ import numpy as np
 import scipy.stats as stats
 import xarray as xr
 
+from trend_utils import fit_trend_map
+
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 OUTPUT_DIR = SCRIPT_DIR / "output"
@@ -132,37 +134,6 @@ def seasonal_means(da: xr.DataArray, season: str) -> xr.DataArray:
     return group_complete_means(season_da, labels, expected_count=3, output_dim="year")
 
 
-def compute_trend_map(da: xr.DataArray, time_dim: str = "year") -> xr.DataArray:
-    spatial_dims = [dim for dim in da.dims if dim != time_dim]
-    ordered = da.transpose(time_dim, *spatial_dims).astype(np.float64)
-
-    x = ordered[time_dim].values.astype(np.float64)
-    y = ordered.values.reshape(ordered.sizes[time_dim], -1)
-    mask = np.isfinite(y)
-    x2d = x[:, None]
-    valid_counts = mask.sum(axis=0)
-
-    y_sum = np.where(mask, y, 0.0).sum(axis=0)
-    x_sum = np.where(mask, x2d, 0.0).sum(axis=0)
-
-    enough_points = valid_counts >= 2
-    x_mean = np.full(y.shape[1], np.nan, dtype=np.float64)
-    y_mean = np.full(y.shape[1], np.nan, dtype=np.float64)
-    x_mean[enough_points] = x_sum[enough_points] / valid_counts[enough_points]
-    y_mean[enough_points] = y_sum[enough_points] / valid_counts[enough_points]
-
-    covariance = np.where(mask, (x2d - x_mean) * (y - y_mean), 0.0).sum(axis=0)
-    variance = np.where(mask, (x2d - x_mean) ** 2, 0.0).sum(axis=0)
-
-    slope = np.full(y.shape[1], np.nan, dtype=np.float32)
-    valid = enough_points & (variance > 0.0)
-    slope[valid] = (covariance[valid] / variance[valid]).astype(np.float32)
-
-    coords = {dim: ordered[dim] for dim in spatial_dims}
-    shape = tuple(ordered.sizes[dim] for dim in spatial_dims)
-    return xr.DataArray(slope.reshape(*shape), coords=coords, dims=spatial_dims)
-
-
 def area_weighted_global_mean(da: xr.DataArray) -> xr.DataArray:
     lat_weights = xr.DataArray(
         np.cos(np.deg2rad(da["lat"].values)),
@@ -209,7 +180,7 @@ def build_period_statistics(
         grouped = annual_means(da) if period == "annual" else seasonal_means(da, period)
         means.append(grouped.mean("year", skipna=True).expand_dims(period=[period]))
         trends.append(
-            compute_trend_map(grouped, time_dim="year").expand_dims(period=[period])
+            fit_trend_map(grouped, time_dim="year")["slope"].expand_dims(period=[period])
         )
         sample_counts.append(int(grouped.sizes["year"]))
         start_years.append(int(grouped["year"].min()))
@@ -560,7 +531,7 @@ def load_monthly_sst(path: Path = SST_INPUT_FILE) -> xr.DataArray:
 def build_sst_dataset(input_file: Path = SST_INPUT_FILE) -> xr.Dataset:
     sst = load_monthly_sst(input_file)
     annual_grouped = annual_means(sst)
-    annual_trend = compute_trend_map(annual_grouped, time_dim="year").astype(np.float32)
+    annual_trend = fit_trend_map(annual_grouped, time_dim="year")["slope"].astype(np.float32)
     annual_trend.name = "annual_sst_trend"
     annual_trend.attrs.update(
         long_name="Annual mean sea surface temperature trend",
@@ -574,7 +545,7 @@ def build_sst_dataset(input_file: Path = SST_INPUT_FILE) -> xr.Dataset:
     for season in SEASONS:
         grouped = seasonal_means(sst, season)
         seasonal_trends.append(
-            compute_trend_map(grouped, time_dim="year").expand_dims(season=[season])
+            fit_trend_map(grouped, time_dim="year")["slope"].expand_dims(season=[season])
         )
         seasonal_counts.append(int(grouped.sizes["year"]))
         seasonal_start_years.append(int(grouped["year"].min()))
