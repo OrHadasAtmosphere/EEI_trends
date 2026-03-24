@@ -1,0 +1,10 @@
+Regime,DJF,MAM,JJA,SON,Overall
+NH ice,-1.01,-0.16,3.00,-0.71,1.12
+SH ice,4.80,0.48,0.15,5.05,10.48
+NH storm track,1.76,5.27,9.48,3.01,19.52
+SH storm track,0.17,2.11,2.99,3.91,9.18
+NH positive omega,0.60,7.74,7.67,3.82,19.83
+SH positive omega,1.56,0.68,2.68,1.12,6.05
+negative omega,5.15,9.26,7.07,6.22,27.69
+midlatitude non-storm,1.26,1.15,2.53,1.20,6.13
+tropical remainder,nan,nan,nan,nan,nan
