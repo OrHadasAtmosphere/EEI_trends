@@ -34,9 +34,9 @@ def format_latitude_label(latitude: float) -> str:
     return "0\N{DEGREE SIGN}"
 
 
-def add_latitude_lines(ax) -> None:
+def add_latitude_lines(ax, c_lon) -> None:
     gridlines = ax.gridlines(
-        crs=ccrs.PlateCarree(),
+        crs=ccrs.PlateCarree(central_longitude=c_lon),
         draw_labels=False,
         linewidth=0.6,
         color="0.35",
@@ -51,17 +51,16 @@ def add_latitude_lines(ax) -> None:
             -180,
             float(latitude),
             format_latitude_label(float(latitude)),
-            transform=ccrs.PlateCarree(),
+            transform=ccrs.PlateCarree(central_longitude=c_lon),
             ha="right",
             va="center",
-            fontsize=8,
+            fontsize=6,
             color="0.25",
-            bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.75, "pad": 1.0},
             clip_on=False,
         )
 
 
-def draw_map(ax, field: xr.DataArray, levels: np.ndarray, cmap: str, title: str):
+def draw_map(ax, field: xr.DataArray, levels: np.ndarray, c_lon: int, cmap: str, title: str):
     lon, lat, data = wrap_global_field(field)
     contour = ax.contourf(
         lon,
@@ -72,7 +71,7 @@ def draw_map(ax, field: xr.DataArray, levels: np.ndarray, cmap: str, title: str)
         cmap=cmap,
     )
     ax.coastlines(linewidth=0.7)
-    add_latitude_lines(ax)
+    add_latitude_lines(ax, c_lon)
     ax.set_global()
     ax.set_title(title)
     return contour
@@ -88,12 +87,18 @@ def main() -> None:
     start_year = int(eei_series["year"].min())
     end_year = int(eei_series["year"].max())
     trend_decade = float(ds["all_sky_global_net_annual_trend"]) * 10.0
+    # try to read 95% CI (per year) and convert to per-decade for annotation
+    trend_ci95_decade = None
+    raw_ci = ds["all_sky_global_net_annual_ci95"].values
+    if np.isfinite(raw_ci):
+        trend_ci95_decade = float(raw_ci) * 10.0
 
     FIGURES_DIR.mkdir(parents=True, exist_ok=True)
     fig = plt.figure(figsize=(5, 6), constrained_layout=True)
+    c_lon = 220
     axes = [
         fig.add_subplot(2, 1, 1),
-        fig.add_subplot(2, 1, 2, projection=ccrs.Robinson(central_longitude=60)),
+        fig.add_subplot(2, 1, 2, projection=ccrs.Robinson(central_longitude=c_lon)),
     ]
 
     trend_limit = 5
@@ -112,25 +117,18 @@ def main() -> None:
         eei_fit,
         color="tab:red",
         linewidth=2,
-        label="Linear fit",
+        label=rf"Trend: {trend_decade:.2f} ± {trend_ci95_decade:.1f} W m$^{{-2}}$ decade$^{{-1}}$",
     )
     axes[0].set_title(f"(a) Global-mean EEI ({start_year}-{end_year})")
     axes[0].set_xlabel("Year")
     axes[0].set_ylabel(r"W m$^{-2}$")
     axes[0].grid(alpha=0.3, linestyle=":")
     axes[0].legend(frameon=False, loc="upper left")
-    axes[0].text(
-        0.5,
-        0.05,
-        rf"Trend: {trend_decade:.2f} W m$^{{-2}}$ decade$^{{-1}}$",
-        transform=axes[0].transAxes,
-        ha="left",
-        va="bottom",
-    )
     trend_plot = draw_map(
         axes[1],
         eei_trend,
         np.linspace(-trend_limit, trend_limit, 11),
+        c_lon,
         "RdBu_r",
         f"(b) EEI trend ({start_year}-{end_year})",
     )
@@ -140,6 +138,8 @@ def main() -> None:
         ax=axes[1],
         orientation="horizontal",
         pad=0.05,
+        shrink=0.6,
+        aspect=40,
         label=r"W m$^{-2}$ decade$^{-1}$",
     )
     local_path, overleaf_path = save_figure_outputs(fig, FIGURE_FILE.name, dpi=300)
