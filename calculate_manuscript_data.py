@@ -52,9 +52,8 @@ REGION_NAMES = (
     "SH ice",
     "NH storm track",
     "SH storm track",
-    "NH positive omega",
-    "SH positive omega",
-    "negative omega",
+    "Tropical Descent",
+    "Tropical Ascent",
     "midlatitude non-storm",
     "tropical remainder",
 )
@@ -749,15 +748,15 @@ def build_region_masks(
     sh_positive_omega = (
         (lat2d < 0) & equatorward & (~storm_track) & (~ice_mask) & (omega >= pos_limit)
     )
-    neg_omega = equatorward & (~storm_track) & (~ice_mask) & (omega <= neg_limit)
+    tropical_descent = nh_positive_omega | sh_positive_omega
+    tropical_ascent = equatorward & (~storm_track) & (~ice_mask) & (omega <= neg_limit)
     midlatitude_non_storm = (~storm_track) & (~equatorward) & (~ice_mask)
     tropical_remainder = (
         equatorward
         & (~storm_track)
         & (~ice_mask)
-        & (~nh_positive_omega)
-        & (~sh_positive_omega)
-        & (~neg_omega)
+        & (~tropical_descent)
+        & (~tropical_ascent)
     )
 
     return {
@@ -765,9 +764,8 @@ def build_region_masks(
         "SH ice": sh_ice,
         "NH storm track": nh_storm,
         "SH storm track": sh_storm,
-        "NH positive omega": nh_positive_omega,
-        "SH positive omega": sh_positive_omega,
-        "negative omega": neg_omega,
+        "Tropical Descent": tropical_descent,
+        "Tropical Ascent": tropical_ascent,
         "midlatitude non-storm": midlatitude_non_storm,
         "tropical remainder": tropical_remainder,
     }
@@ -977,12 +975,10 @@ def build_masks_and_contributions(
             (masks["NH storm track"] | masks["SH storm track"]).astype(np.int8).values
         )
         combined_pos_omega[season_index] = (
-            (masks["NH positive omega"] | masks["SH positive omega"])
-            .astype(np.int8)
-            .values
+            masks["Tropical Descent"].astype(np.int8).values
         )
         combined_neg_omega[season_index] = (
-            masks["negative omega"].astype(np.int8).values
+            masks["Tropical Ascent"].astype(np.int8).values
         )
 
     annual_region_series = seasonal_region_series.mean(axis=0)
@@ -1138,7 +1134,21 @@ def ensure_manuscript_outputs(force: bool = False) -> dict[str, Path]:
         "contributions": CONTRIBUTIONS_OUTPUT_FILE,
         "sst": SST_OUTPUT_FILE,
     }
-    if force or any(not path.exists() for path in outputs.values()):
+    needs_refresh = force or any(not path.exists() for path in outputs.values())
+    if not needs_refresh:
+        expected_regions = list(REGION_NAMES)
+        try:
+            contributions_ds = xr.open_dataset(CONTRIBUTIONS_OUTPUT_FILE)
+            masks_ds = xr.open_dataset(MASKS_OUTPUT_FILE)
+            needs_refresh = (
+                list(contributions_ds["region"].values) != expected_regions
+                or list(masks_ds["region"].values) != expected_regions
+            )
+            contributions_ds.close()
+            masks_ds.close()
+        except Exception:
+            needs_refresh = True
+    if needs_refresh:
         return calculate_all(force=True)
     return outputs
 

@@ -53,6 +53,13 @@ def format_cell(
     return f"${trend_text}\\;({contribution_percent:.1f}\\%)$"
 
 
+def format_region_label(ds: xr.Dataset, region: str) -> str:
+    mean_seasonal_area_percent = (
+        float(ds["seasonal_area_fraction"].sel(region=region).mean("season")) * 100.0
+    )
+    return f"{region} ({mean_seasonal_area_percent:.1f}\\%)"
+
+
 def main() -> None:
     args = parse_args()
     ensure_manuscript_outputs(force=False)
@@ -61,7 +68,7 @@ def main() -> None:
     lines = [
         "\\begin{tabular}{lccccc}",
         "\\hline",
-        "Region & Annual & DJF & MAM & JJA & SON \\\\",
+        "Region (mean seasonal area) & Annual & DJF & MAM & JJA & SON \\\\",
         "\\hline",
     ]
     for region in ds["region"].values:
@@ -86,7 +93,7 @@ def main() -> None:
             for season in SEASONS
         ]
         cells = " & ".join([annual_cell, *seasonal_cells])
-        lines.append(f"{region} & {cells} \\\\")
+        lines.append(f"{format_region_label(ds, region)} & {cells} \\\\")
     overall_annual = format_cell(
         float(ds["annual_global_trend"]),
         float(ds["annual_global_ci95"]),
