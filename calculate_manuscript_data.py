@@ -496,7 +496,8 @@ def build_ceres_dataset(input_file: Path = CERES_INPUT_FILE) -> xr.Dataset:
         long_name="Annual global-mean all-sky EEI",
         units="W m-2",
     )
-    global_trend, annual_global_fit = linear_trend_series(
+    # fit trend and 95% confidence interval for the annual global series
+    global_trend, global_ci95, annual_global_fit, _ = fit_trend_with_confidence_interval(
         annual_global_eei, coord="year"
     )
     annual_global_fit = annual_global_fit.astype(np.float32)
@@ -504,6 +505,14 @@ def build_ceres_dataset(input_file: Path = CERES_INPUT_FILE) -> xr.Dataset:
     annual_global_fit.attrs.update(
         long_name="Linear fit to annual global-mean all-sky EEI",
         units="W m-2",
+    )
+    # store 95% CI for the slope (units: W m-2 yr-1)
+    out["all_sky_global_net_annual_ci95"] = xr.DataArray(
+        np.float32(global_ci95),
+        attrs={
+            "long_name": "95% confidence interval for trend in annual global-mean all-sky EEI",
+            "units": "W m-2 yr-1",
+        },
     )
 
     out["all_sky_global_net_monthly_mean"] = global_eei.astype(np.float32)
