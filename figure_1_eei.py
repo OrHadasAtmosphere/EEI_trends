@@ -16,6 +16,7 @@ import xarray as xr
 from calculate_manuscript_data import (
     CERES_OUTPUT_FILE,
     FIGURES_DIR,
+    CENTRAL_LONGITUDE,
     save_figure_outputs,
     ensure_manuscript_outputs,
 )
@@ -48,7 +49,7 @@ def add_latitude_lines(ax, c_lon) -> None:
 
     for latitude in LATITUDE_LINES:
         ax.text(
-            -180,
+            -314.99,
             float(latitude),
             format_latitude_label(float(latitude)),
             transform=ccrs.PlateCarree(central_longitude=c_lon),
@@ -98,7 +99,7 @@ def main() -> None:
     c_lon = 220
     axes = [
         fig.add_subplot(2, 1, 1),
-        fig.add_subplot(2, 1, 2, projection=ccrs.Robinson(central_longitude=c_lon)),
+        fig.add_subplot(2, 1, 2, projection=ccrs.Robinson(central_longitude=CENTRAL_LONGITUDE)),
     ]
 
     trend_limit = 5

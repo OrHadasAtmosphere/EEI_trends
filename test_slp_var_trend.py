@@ -16,15 +16,16 @@ from calculate_manuscript_data import (
     FIGURES_DIR,
     save_figure_outputs,
     seasonal_means as seasonal_means_from_time,
+    CENTRAL_LONGITUDE,
 )
 from map_plot_utils import wrap_global_field
 from trend_utils import fit_trend_map
 
 
-SLP_VAR_YEARLY_FILE = SCRIPT_DIR / "output" / "SLP_var_yearly.nc"
+SLP_VAR_YEARLY_FILE = SCRIPT_DIR / "output" / "EKE_var_yearly_OnlyTime.nc"
 W_RAW_FILE = SCRIPT_DIR / "output" / "W_raw.nc"
 MEAN_FIGURE_FILE = FIGURES_DIR / "test_slp_var_seasonal_means.png"
-TREND_FIGURE_FILE = FIGURES_DIR / "test_slp_var_seasonal_trends.png"
+TREND_FIGURE_FILE = FIGURES_DIR / "test_slp_var_seasonal_trends_EKE.png"
 SERIES_FIGURE_FILE = FIGURES_DIR / "test_slp_var_hemispheric_series.png"
 W_TREND_FIGURE_FILE = FIGURES_DIR / "test_w_seasonal_trends.png"
 SEASONS = ("DJF", "MAM", "JJA", "SON")
@@ -164,7 +165,7 @@ def make_figure(
         2,
         figsize=(12, 7),
         constrained_layout=True,
-        subplot_kw={"projection": ccrs.Robinson(central_longitude=60)},
+        subplot_kw={"projection": ccrs.Robinson(central_longitude=CENTRAL_LONGITUDE)},
     )
 
     contour = None
@@ -232,11 +233,18 @@ def make_series_figure(
 
 def main() -> None:
     ds = xr.open_dataset(SLP_VAR_YEARLY_FILE)
-    slp_var = ds["SLP_var"].sortby("lat")
+    print(ds.data_vars)
+    if "SLP_var" in ds.data_vars:
+        var = "SLP_var"
+    elif "EKE" in ds.data_vars:
+        var = "EKE"
+    else:
+        var = "surface_wind"
+    slp_var = ds[var].sortby("lat")
     lat = slp_var["lat"].data[None, None, :, None]
     sin_lat = np.sin(np.deg2rad(lat))
     sin_lat = np.where(np.abs(lat) < 15.0, 1.0, sin_lat)
-    slp_var = slp_var / sin_lat / sin_lat
+    # slp_var = slp_var / sin_lat / sin_lat
     w = load_monthly_w()
 
     seasonal_series = {

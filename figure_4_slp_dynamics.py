@@ -12,13 +12,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
-from calculate_manuscript_data import FIGURES_DIR, save_figure_outputs
+from calculate_manuscript_data import (
+    FIGURES_DIR,
+    save_figure_outputs,
+    CENTRAL_LONGITUDE,
+)
 from map_plot_utils import wrap_global_field
 from trend_utils import fit_trend_map
 
 
 FIGURE_FILE = FIGURES_DIR / "figure_4_slp_dynamics.png"
-SLP_VAR_YEARLY_FILE = SCRIPT_DIR / "output" / "SLP_var_yearly.nc"
+SLP_VAR_YEARLY_FILE = SCRIPT_DIR / "output" / "EKE_var_yearly_OnlyTime.nc"
 SEASON_MONTHS = {
     "DJF": [12, 1, 2],
     "MAM": [3, 4, 5],
@@ -64,16 +68,6 @@ def plot_panel(
         levels=levels,
         cmap="RdBu_r",
     )
-    sig_lon, sig_lat, sig_data = wrap_global_field(significant)
-    ax.contourf(
-        sig_lon,
-        sig_lat,
-        sig_data,
-        levels=[0.5, 1.5],
-        colors="none",
-        hatches=["////"],
-        transform=ccrs.PlateCarree(),
-    )
     ax.coastlines(linewidth=0.7)
     ax.set_global()
     ax.set_title(title)
@@ -82,7 +76,7 @@ def plot_panel(
 
 def main() -> None:
     ds = xr.open_dataset(SLP_VAR_YEARLY_FILE)
-    slp_var = ds["SLP_var"].sortby("lat")
+    slp_var = ds["EKE"].sortby("lat") / 1e3
 
     seasonal_means = {
         season: seasonal_means_from_monthly(slp_var, season) for season in SEASON_MONTHS
@@ -94,7 +88,7 @@ def main() -> None:
     shoulder_years = np.intersect1d(mam["year"].values, son["year"].values).astype(
         np.int32
     )
-    shoulder = 0.5 * (mam.sel(year=shoulder_years) + son.sel(year=shoulder_years))
+    shoulder = mam.sel(year=shoulder_years)
     shoulder = shoulder.assign_coords(year=shoulder_years)
 
     jja_fit = fit_trend_map(jja, time_dim="year")
@@ -108,7 +102,7 @@ def main() -> None:
     shoulder_trend = shoulder_trend * 10.0
     stacked = np.concatenate([jja_trend.values.ravel(), shoulder_trend.values.ravel()])
     finite = np.abs(stacked[np.isfinite(stacked)])
-    levels = np.linspace(-2, 2, 21)
+    levels = np.linspace(-50, 50, 21)
 
     FIGURES_DIR.mkdir(parents=True, exist_ok=True)
     fig, axes = plt.subplots(
@@ -116,7 +110,7 @@ def main() -> None:
         2,
         figsize=(12, 4.5),
         constrained_layout=True,
-        subplot_kw={"projection": ccrs.Robinson()},
+        subplot_kw={"projection": ccrs.Robinson(central_longitude=CENTRAL_LONGITUDE)},
     )
     contour = plot_panel(
         axes[0],

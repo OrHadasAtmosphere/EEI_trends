@@ -10,6 +10,8 @@ import xarray as xr
 from trend_utils import fit_trend_map
 
 
+STORM_MATRICS = "EKE"
+CENTRAL_LONGITUDE = -135
 SCRIPT_DIR = Path(__file__).resolve().parent
 OUTPUT_DIR = SCRIPT_DIR / "output"
 FIGURES_DIR = SCRIPT_DIR / "figures"
@@ -29,7 +31,7 @@ SST_INPUT_FILE = OUTPUT_DIR / "SST_raw.nc"
 SST_OUTPUT_FILE = OUTPUT_DIR / "manuscript_sst_diagnostics.nc"
 OMEGA_FILE = OUTPUT_DIR / "W_mean.nc"
 ICE_FILE = OUTPUT_DIR / "ice_mean.nc"
-SLP_FILE = OUTPUT_DIR / "climatology_ERA5.nc"
+STORM_FILE = OUTPUT_DIR / f"{STORM_MATRICS}_var_yearly_OnlyTime.nc"
 INSOLATION_FILE = OUTPUT_DIR / "sun_insolation.nc"
 
 SEASONS = ("DJF", "MAM", "JJA", "SON")
@@ -63,6 +65,8 @@ OMEGA_NEG_FACTOR = 0.05
 ICE_FACTOR = 0.1
 OMEGA_LATITUDE_LIMIT = 40.0
 SEASON_TIME_WEIGHT = 0.25
+RADIATION_TREND_START_YEAR = 2001
+RADIATION_TREND_END_YEAR = 2024
 
 
 def ensure_required_variables(ds: xr.Dataset, required: set[str], context: str) -> None:
@@ -85,7 +89,9 @@ def save_figure_outputs(fig, filename: str, *, dpi: int = 300) -> tuple[Path, Pa
     return local_path, overleaf_path
 
 
-def save_text_outputs(text: str, local_path: Path, overleaf_path: Path) -> tuple[Path, Path]:
+def save_text_outputs(
+    text: str, local_path: Path, overleaf_path: Path
+) -> tuple[Path, Path]:
     local_path.parent.mkdir(parents=True, exist_ok=True)
     overleaf_path.parent.mkdir(parents=True, exist_ok=True)
     local_path.write_text(text)
@@ -108,22 +114,48 @@ def group_complete_means(
     return grouped.sel({output_dim: valid_groups})
 
 
-def annual_means(da: xr.DataArray) -> xr.DataArray:
+def select_year_bounds(
+    grouped: xr.DataArray,
+    year_bounds: tuple[int, int] | None,
+) -> xr.DataArray:
+    if year_bounds is None:
+        return grouped
+    start_year, end_year = year_bounds
+    return grouped.sel(year=slice(start_year, end_year))
+
+
+def annual_means(
+    da: xr.DataArray,
+    *,
+    year_bounds: tuple[int, int] | None = None,
+) -> xr.DataArray:
     labels = xr.DataArray(
         da["time"].dt.year.values,
         coords={"time": da["time"]},
         dims=("time",),
         name="year",
     )
-    return group_complete_means(da, labels, expected_count=12, output_dim="year")
+    grouped = group_complete_means(da, labels, expected_count=12, output_dim="year")
+    return select_year_bounds(grouped, year_bounds)
 
 
-def seasonal_means(da: xr.DataArray, season: str) -> xr.DataArray:
+def seasonal_means(
+    da: xr.DataArray,
+    season: str,
+    *,
+    year_bounds: tuple[int, int] | None = None,
+    djf_mode: str = "next_year",
+) -> xr.DataArray:
     season_da = da.where(da["time"].dt.season == season, drop=True)
     season_year = season_da["time"].dt.year.values.astype(np.int32)
-    season_year = season_year + (season_da["time"].dt.month.values == 12).astype(
-        np.int32
-    )
+    if season == "DJF":
+        december = season_da["time"].dt.month.values == 12
+        if djf_mode == "next_year":
+            season_year = season_year + december.astype(np.int32)
+        elif djf_mode == "december_year":
+            season_year = season_year - (~december).astype(np.int32)
+        else:
+            raise ValueError(f"Unsupported DJF aggregation mode: {djf_mode}")
 
     labels = xr.DataArray(
         season_year,
@@ -131,7 +163,13 @@ def seasonal_means(da: xr.DataArray, season: str) -> xr.DataArray:
         dims=("time",),
         name="season_year",
     )
-    return group_complete_means(season_da, labels, expected_count=3, output_dim="year")
+    grouped = group_complete_means(
+        season_da,
+        labels,
+        expected_count=3,
+        output_dim="year",
+    )
+    return select_year_bounds(grouped, year_bounds)
 
 
 def area_weighted_global_mean(da: xr.DataArray) -> xr.DataArray:
@@ -169,6 +207,9 @@ def linear_trend_series(
 
 def build_period_statistics(
     da: xr.DataArray,
+    *,
+    year_bounds: tuple[int, int] | None = None,
+    djf_mode: str = "next_year",
 ) -> tuple[xr.DataArray, xr.DataArray, xr.DataArray, xr.DataArray, xr.DataArray]:
     means: list[xr.DataArray] = []
     trends: list[xr.DataArray] = []
@@ -177,10 +218,21 @@ def build_period_statistics(
     end_years: list[int] = []
 
     for period in PERIODS:
-        grouped = annual_means(da) if period == "annual" else seasonal_means(da, period)
+        grouped = (
+            annual_means(da, year_bounds=year_bounds)
+            if period == "annual"
+            else seasonal_means(
+                da,
+                period,
+                year_bounds=year_bounds,
+                djf_mode=djf_mode,
+            )
+        )
         means.append(grouped.mean("year", skipna=True).expand_dims(period=[period]))
         trends.append(
-            fit_trend_map(grouped, time_dim="year")["slope"].expand_dims(period=[period])
+            fit_trend_map(grouped, time_dim="year")["slope"].expand_dims(
+                period=[period]
+            )
         )
         sample_counts.append(int(grouped.sizes["year"]))
         start_years.append(int(grouped["year"].min()))
@@ -330,6 +382,7 @@ def build_ceres_dataset(input_file: Path = CERES_INPUT_FILE) -> xr.Dataset:
     monthly = load_aligned_ceres_fluxes(
         input_file=input_file, insolation_file=INSOLATION_FILE
     )
+    radiation_year_bounds = (RADIATION_TREND_START_YEAR, RADIATION_TREND_END_YEAR)
     fields = {
         "all_sky": {
             "shortwave": monthly["all_sky_shortwave"],
@@ -358,7 +411,11 @@ def build_ceres_dataset(input_file: Path = CERES_INPUT_FILE) -> xr.Dataset:
 
     for sky_name, components in fields.items():
         for component_name, data in components.items():
-            means, trends, counts, starts, ends = build_period_statistics(data)
+            means, trends, counts, starts, ends = build_period_statistics(
+                data,
+                year_bounds=radiation_year_bounds,
+                djf_mode="december_year",
+            )
             if sample_count is None:
                 sample_count = counts
                 start_year = starts
@@ -381,7 +438,9 @@ def build_ceres_dataset(input_file: Path = CERES_INPUT_FILE) -> xr.Dataset:
             out[trend_name] = trends
 
     solar_means, solar_trends, _, _, _ = build_period_statistics(
-        monthly["incoming_shortwave"]
+        monthly["incoming_shortwave"],
+        year_bounds=radiation_year_bounds,
+        djf_mode="december_year",
     )
     solar_means.attrs.update(
         long_name="Incoming solar flux climatological mean",
@@ -461,7 +520,10 @@ def build_ceres_dataset(input_file: Path = CERES_INPUT_FILE) -> xr.Dataset:
             "shortwave minus global-mean outgoing longwave."
         ),
     )
-    annual_global_eei = annual_means(global_eei).astype(np.float32)
+    annual_global_eei = annual_means(
+        global_eei,
+        year_bounds=radiation_year_bounds,
+    ).astype(np.float32)
     annual_global_eei.name = "all_sky_global_net_annual_mean"
     annual_global_eei.attrs.update(
         long_name="Annual global-mean all-sky EEI",
@@ -505,9 +567,17 @@ def build_ceres_dataset(input_file: Path = CERES_INPUT_FILE) -> xr.Dataset:
         source_file=str(input_file),
         source_insolation_file=str(INSOLATION_FILE),
         history="Created by basic_trend/calculate_manuscript_data.py",
+        radiation_trend_year_range=(
+            f"{RADIATION_TREND_START_YEAR}-{RADIATION_TREND_END_YEAR}"
+        ),
+        djf_definition=(
+            "December of the labeled year with January-February of the following year."
+        ),
         note=(
             "Net EEI is computed as incoming shortwave minus outgoing shortwave minus "
-            "outgoing longwave. all_clear = all-sky minus clear-sky."
+            "outgoing longwave. all_clear = all-sky minus clear-sky. Radiation trends "
+            f"use {RADIATION_TREND_START_YEAR}-{RADIATION_TREND_END_YEAR}, and DJF is "
+            "defined by December of the labeled year plus the following January-February."
         ),
     )
     return out
@@ -531,7 +601,9 @@ def load_monthly_sst(path: Path = SST_INPUT_FILE) -> xr.DataArray:
 def build_sst_dataset(input_file: Path = SST_INPUT_FILE) -> xr.Dataset:
     sst = load_monthly_sst(input_file)
     annual_grouped = annual_means(sst)
-    annual_trend = fit_trend_map(annual_grouped, time_dim="year")["slope"].astype(np.float32)
+    annual_trend = fit_trend_map(annual_grouped, time_dim="year")["slope"].astype(
+        np.float32
+    )
     annual_trend.name = "annual_sst_trend"
     annual_trend.attrs.update(
         long_name="Annual mean sea surface temperature trend",
@@ -545,7 +617,9 @@ def build_sst_dataset(input_file: Path = SST_INPUT_FILE) -> xr.Dataset:
     for season in SEASONS:
         grouped = seasonal_means(sst, season)
         seasonal_trends.append(
-            fit_trend_map(grouped, time_dim="year")["slope"].expand_dims(season=[season])
+            fit_trend_map(grouped, time_dim="year")["slope"].expand_dims(
+                season=[season]
+            )
         )
         seasonal_counts.append(int(grouped.sizes["year"]))
         seasonal_start_years.append(int(grouped["year"].min()))
@@ -614,8 +688,7 @@ def load_mask_drivers() -> tuple[xr.DataArray, xr.DataArray, xr.DataArray]:
     omega = xr.concat([omega_annual, omega_seasonal], dim="period").assign_coords(
         period=list(PERIODS)
     )
-
-    slp_monthly = xr.open_dataset(SLP_FILE)["SLP_var"].sortby("lat")
+    slp_monthly = xr.open_dataset(STORM_FILE)[STORM_MATRICS].mean("year").sortby("lat")
     slp_fields = [slp_monthly.mean("month", skipna=True).expand_dims(period=["annual"])]
     for season in SEASONS:
         seasonal_mean = slp_monthly.sel(month=SEASON_MONTHS[season]).mean(
@@ -624,12 +697,14 @@ def load_mask_drivers() -> tuple[xr.DataArray, xr.DataArray, xr.DataArray]:
         slp_fields.append(seasonal_mean.expand_dims(period=[season]))
     slp = xr.concat(slp_fields, dim="period").assign_coords(period=list(PERIODS))
 
-    sin_lat = xr.DataArray(
-        np.sin(np.deg2rad(slp["lat"].data)),
-        coords={"lat": slp["lat"]},
-        dims=("lat",),
-    )
-    sin_lat = xr.where(np.abs(slp["lat"]) < 15.0, 1.0, sin_lat)
+    if STORM_MATRICS == "SLP":
+        sin_lat = xr.DataArray(
+            np.sin(np.deg2rad(slp["lat"].data)),
+            coords={"lat": slp["lat"]},
+            dims=("lat",),
+        )
+        sin_lat = xr.where(np.abs(slp["lat"]) < 15.0, 1.0, sin_lat)
+        slp = slp / (sin_lat**2)
 
     ice_ds = xr.open_dataset(ICE_FILE)
     ice_seasonal = (
@@ -640,7 +715,7 @@ def load_mask_drivers() -> tuple[xr.DataArray, xr.DataArray, xr.DataArray]:
         period=list(PERIODS)
     )
 
-    return omega, slp / (sin_lat**2), ice
+    return omega, slp, ice
 
 
 def limits(slp: xr.DataArray, omega: xr.DataArray) -> tuple[float, float, float, float]:
@@ -729,6 +804,7 @@ def build_masks_and_contributions(
     ceres_ds: xr.Dataset,
 ) -> tuple[xr.Dataset, xr.Dataset]:
     monthly = load_aligned_ceres_fluxes()
+    radiation_year_bounds = (RADIATION_TREND_START_YEAR, RADIATION_TREND_END_YEAR)
     seasonal_trend = ceres_ds["all_sky_net_trend"].sel(period=list(SEASONS))
     target_lat = seasonal_trend["lat"]
     target_lon = seasonal_trend["lon"]
@@ -767,7 +843,13 @@ def build_masks_and_contributions(
         (len(SEASONS), target_lat.size, target_lon.size), dtype=np.int8
     )
     seasonal_fields = {
-        season: seasonal_means(monthly["all_sky_net"], season) for season in SEASONS
+        season: seasonal_means(
+            monthly["all_sky_net"],
+            season,
+            year_bounds=radiation_year_bounds,
+            djf_mode="december_year",
+        )
+        for season in SEASONS
     }
     seasonal_years = [
         seasonal_fields[season]["year"].values.astype(np.int32) for season in SEASONS
@@ -1000,11 +1082,19 @@ def build_masks_and_contributions(
         attrs={
             "title": "Manuscript regional EEI trend and contribution summary",
             "history": "Created by basic_trend/calculate_manuscript_data.py",
+            "radiation_trend_year_range": (
+                f"{RADIATION_TREND_START_YEAR}-{RADIATION_TREND_END_YEAR}"
+            ),
+            "djf_definition": (
+                "December of the labeled year with January-February of the following year."
+            ),
             "note": (
                 "Seasonal contribution percentages are referenced to the annual global-mean "
                 "EEI trend and include both the effective masked area fraction and the "
                 "1/4 seasonal time weighting. Annual regional contributions are aggregated "
-                "from the four seasonal contributions."
+                "from the four seasonal contributions. Radiation trends use "
+                f"{RADIATION_TREND_START_YEAR}-{RADIATION_TREND_END_YEAR}, and DJF is "
+                "defined by December of the labeled year plus the following January-February."
             ),
         },
     )

@@ -18,6 +18,7 @@ from calculate_manuscript_data import (
     SST_OUTPUT_FILE,
     save_figure_outputs,
     ensure_manuscript_outputs,
+    CENTRAL_LONGITUDE,
 )
 from map_plot_utils import wrap_global_field
 from water_vapour import (
@@ -53,6 +54,7 @@ def blank_panel(ax, title: str, message: str) -> None:
     )
     ax.set_axis_off()
 
+
 def main() -> None:
     ensure_manuscript_outputs(force=False)
     ceres = xr.open_dataset(CERES_OUTPUT_FILE)
@@ -64,7 +66,11 @@ def main() -> None:
         2,
         figsize=(14, 8),
         constrained_layout=True,
-        subplot_kw={"projection": ccrs.Robinson(central_longitude=60)},
+        subplot_kw={
+            "projection": ccrs.Robinson(
+                central_longitude=CENTRAL_LONGITUDE,
+            )
+        },
     )
 
     flux_levels = np.linspace(-7.0, 7.0, 15)
