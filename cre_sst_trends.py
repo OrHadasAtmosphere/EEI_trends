@@ -12,6 +12,8 @@ import matplotlib.patches as mpatches
 import cartopy.crs as ccrs
 import numpy as np
 import xarray as xr
+from sklearn.neighbors import KernelDensity
+from matplotlib.colors import Normalize
 
 from calculate_manuscript_data import (
     CERES_OUTPUT_FILE,
@@ -32,12 +34,11 @@ MASK_VARS = [
 
 BOX_REGIONS = [
     # name, lat_min, lat_max, lon_min, lon_max, color
-    ("Peruvian deck", -14.0, 0.0, -100.0, -80.0, "tab:brown"),
-    ("Chilean deck", -36.5, -15, -100.0, -77.0, "tab:orange"),
-    ("Namibian deck", -25.0, -7.0, -12.5, 12.5, "tab:green"), 
-    ("Australian deck", -35.0, -15.0, 80.0, 112.0, "tab:purple"),
-    ("Californian deck", 14.0, 30.0, -142.0, -110.0, "tab:blue"),
-    ("Azores", 20.0, 37.0, -45.0, -15.0, "tab:red"),
+    ("Peruvian deck", -30.0, -10.0, -100.0, -70.0, "tab:orange"),
+    ("Namibian deck", -30.0, -10.0, -15, 15, "tab:green"), 
+    #("Australian deck", -35.0, -20.0, 90.0, 115.0, "tab:purple"),
+    ("Californian deck", 10.0, 35.0, -140.0, -110.0, "tab:blue"),
+    #("Azores", 10.0, 25.0, -35.0, -15.0, "tab:red"),
 ]
 
 def main() -> None:
@@ -64,20 +65,42 @@ def main() -> None:
     ax.set_xlabel("Sea surface temperature trend (K decade$^{-1}$)")
     ax.set_ylabel("Cloud radiative effect (W m$^{-2}$ decade$^{-1}$)")
     ax.set_title("CRE trend vs SST trend")
-    
+
+    # prepare density colormap cycle and legend proxies
+    DENSITY_CMAPS = ["Reds", "Greens", "Blues", "Purples", "Oranges"]
+    density_handles: list = []
+    density_labels: list[str] = []
+
     cloud_annual = ceres[cloud_var].sel(period="annual") * 10.0
     # prefer annual SST trend if available
     if sst_annual_var in sst:
         sst_annual = sst[sst_annual_var] * 10.0
+        print("annual SSTs in use")
     else:
         # fall back to mean of seasonal trends
         if sst_seasonal_var in sst:
             # take weighted mean across seasons (equal weights here)
+            print("SST trend as annual weighted mean of seasonal")
             sst_annual = sst[sst_seasonal_var].mean(dim="season", skipna=True) * 10.0
         else:
             raise RuntimeError("No SST annual or seasonal trend variable found in SST dataset")
 
-    for name, lat_min, lat_max, lon_min, lon_max, color in BOX_REGIONS:
+    # build tropical-subsidence mask union and regrid it to the cloud (CERES) grid so we can mask box points
+    positive_mask = masks["positive_omega_mask"]
+    if "season" in positive_mask.dims:
+        mask_union = positive_mask.any(dim="season")
+    else:
+        mask_union = positive_mask
+
+    # ensure mask is on the same grid as cloud_annual for straightforward selection
+    try:
+        mask_on_cloud_grid = regrid_to_target(mask_union, cloud_annual["lat"], cloud_annual["lon"])
+    except Exception:
+        # if regridding fails, fall back to mask_union (may still work if already aligned)
+        mask_on_cloud_grid = mask_union
+        print("Warning: regridding mask to cloud grid failed — using original mask (may mismatch coords)")
+
+    for i, (name, lat_min, lat_max, lon_min, lon_max, color) in enumerate(BOX_REGIONS):
         # align sst/cloud to ensure matching coords
         # SST annual trend data
         sst_a, cloud_a = xr.align(sst_annual, cloud_annual, join="inner")
@@ -108,17 +131,55 @@ def main() -> None:
         sst_sel = sst_a.isel(lon=lon_idx, lat=lat_idx)
         cloud_sel = cloud_a.isel(lon=lon_idx, lat=lat_idx)
 
+        # also extract mask values for these gridpoints (mask is on cloud grid)
+        try:
+            mask_sel = mask_on_cloud_grid.isel(lon=lon_idx, lat=lat_idx)
+            mask_vals = np.asarray(mask_sel.values).ravel()
+        except Exception:
+            # if mask indexing fails, treat as no mask (all True)
+            mask_vals = np.ones_like(np.asarray(sst_sel.values).ravel(), dtype=bool)
+        
         if sst_sel.size == 0 or cloud_sel.size == 0:
             print(f"{name} lat-lon box returned no gridpoints (sst_sel.size={sst_sel.size}, cloud_sel.size={cloud_sel.size})")
             continue
 
         sst_vals = np.asarray(sst_sel.values).ravel()
         cloud_vals = np.asarray(cloud_sel.values).ravel()
-        valid = np.isfinite(sst_vals) & np.isfinite(cloud_vals)
-
+        # require finite values and that the point lies inside the tropical-subsidence mask
+        valid = np.isfinite(sst_vals) & np.isfinite(cloud_vals) & (np.asarray(mask_vals) > 0.5)
+        
         xs_pts = sst_vals[valid]
         ys_pts = cloud_vals[valid]
 
+        # --- density / KDE plot (scikit-learn KernelDensity) ----------------
+        # require a minimum number of points for a stable KDE
+        # standardize to avoid bandwidth issues across axes
+        x_mean, x_std = float(np.nanmean(xs_pts)), float(np.nanstd(xs_pts)) or 1.0
+        y_mean, y_std = float(np.nanmean(ys_pts)), float(np.nanstd(ys_pts)) or 1.0
+
+        xs_std = (xs_pts - x_mean) / x_std
+        ys_std = (ys_pts - y_mean) / y_std
+        samples = np.vstack([xs_std, ys_std]).T
+
+        # fit KDE in standardized space; bandwidth chosen empirically
+        kde = KernelDensity(bandwidth=0.4, kernel="gaussian")
+        kde.fit(samples)
+
+        # build evaluation grid in original units (zoom to cluster extent)
+        x_min = float(np.nanpercentile(xs_pts, 1.0))
+        x_max = float(np.nanpercentile(xs_pts, 99.0))
+        y_min = float(np.nanpercentile(ys_pts, 1.0))
+        y_max = float(np.nanpercentile(ys_pts, 99.0))
+        # small padding
+        pad_x = 0.02 * max(1e-6, x_max - x_min)
+        pad_y = 0.02 * max(1e-6, y_max - y_min)
+        x_grid = np.linspace(x_min - pad_x, x_max + pad_x, 100)
+        y_grid = np.linspace(y_min - pad_y, y_max + pad_y, 100)
+        Xg, Yg = np.meshgrid(x_grid, y_grid)
+        # convert grid to standardized space for scoring
+        grid_std = np.vstack([((Xg.ravel() - x_mean) / x_std), ((Yg.ravel() - y_mean) / y_std)]).T
+        log_dens = kde.score_samples(grid_std)
+        dens = np.exp(log_dens).reshape(Xg.shape)
 
         slope, intercept = np.polyfit(xs_pts, ys_pts, 1)
         x_min = float(np.nanmin(xs_pts))
@@ -126,9 +187,36 @@ def main() -> None:
         pad = 0.05 * max(1e-6, x_max - x_min)
         x_line = np.linspace(x_min - pad, x_max + pad, 3)
         y_line = slope * x_line + intercept
-        ax.scatter(xs_pts, ys_pts, s=12, alpha=0.45, color=color, edgecolors="none", label=f"{name} feedback: {slope:.2f} W m$^{-2}$ K$^{-1}$", zorder=4)
-        ax.plot(x_line, y_line, color=color, linestyle="--", linewidth=1.25, alpha=0.9, zorder=3)
+        ax.plot(x_line, y_line, color=color, linestyle="--", linewidth=1.25, alpha=0.9, zorder=3, label=f"{name} feedback: {slope:.2f} Wm$^-2$K$^-1$")
         print(f"{name}: cluster linear fit slope = {slope:.4f}")
+
+        ax.scatter(xs_pts, ys_pts, s=12, alpha=0.55, color=color, edgecolors="none", label=f"{name} gridpoints", zorder=4)
+
+        # normalize density for nicer contour alpha mapping
+        norm = Normalize(vmin=np.nanpercentile(dens, 5.0), vmax=np.nanpercentile(dens, 98.0))
+        # choose a per-box sequential colormap from the small palette
+        cmap_name = DENSITY_CMAPS[i % len(DENSITY_CMAPS)]
+        cmap = plt.get_cmap(cmap_name)
+        # draw filled contours under the scatter (low alpha)
+        cf = ax.contourf(
+            Xg,
+            Yg,
+            dens,
+            levels=8,
+            cmap=cmap,
+            alpha=0.35,
+            norm=norm,
+            zorder=2,
+            extend="both",
+        )
+        # create a proxy patch for the density legend (use a mid-tone from the cmap)
+        proxy_color = cmap(0.6)
+        density_handles.append(mpatches.Patch(facecolor=proxy_color, edgecolor="none", alpha=0.6))
+        density_labels.append(f"{name} kernel density, 8 levels")
+
+        # plot all grid-point pairs inside the box (small semi-transparent points)
+
+
 
         all_plot_x.extend(xs_pts[np.isfinite(xs_pts)].tolist())
         all_plot_y.extend(ys_pts[np.isfinite(ys_pts)].tolist())
@@ -151,7 +239,16 @@ def main() -> None:
         ax.set_xlim(xmin - pad, xmax + pad)
         ax.set_ylim(ymin - pad, ymax + pad)
 
-    ax.legend(frameon=False, loc="upper left", fontsize=8)
+    # add solid black axes at x=0 and y=0
+    ax.axvline(0.0, color="k", linewidth=0.8, zorder=2)
+    ax.axhline(0.0, color="k", linewidth=0.8, zorder=2)
+
+    # merge existing legend entries (gridpoints / mean / fit lines) with density proxies
+    handles, labels = ax.get_legend_handles_labels()
+    if density_handles:
+        handles = handles + density_handles
+        labels = labels + density_labels
+    ax.legend(handles=handles, labels=labels, frameon=False, loc="upper left", fontsize=8)
     ax.grid(alpha=0.3, linestyle=":")
 
     # bottom panel: global map showing the tropical-subsidence mask used
