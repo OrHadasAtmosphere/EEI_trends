@@ -18,7 +18,6 @@ from calculate_manuscript_data import (
     SST_OUTPUT_FILE,
     MASKS_OUTPUT_FILE,
     FIGURES_DIR,
-    SEASONS,
     ensure_manuscript_outputs,
     regrid_to_target,
     save_figure_outputs,
@@ -33,33 +32,13 @@ MASK_VARS = [
 
 BOX_REGIONS = [
     # name, lat_min, lat_max, lon_min, lon_max, color
-    ("Peruvian deck", -20.0, 0.0, -100.0, -77.0, "tab:orange"),
-    ("Namibian deck", -25.0, -10.0, 0.0, 15.0, "tab:green"), 
-    ("Australian deck", -35.0, -15.0, 95.0, 112.0, "tab:purple"),
-    ("Californian deck", 12.0, 30.0, -135.0, -110.0, "tab:blue"),
+    ("Peruvian deck", -14.0, 0.0, -100.0, -80.0, "tab:brown"),
+    ("Chilean deck", -36.5, -15, -100.0, -77.0, "tab:orange"),
+    ("Namibian deck", -25.0, -7.0, -12.5, 12.5, "tab:green"), 
+    ("Australian deck", -35.0, -15.0, 80.0, 112.0, "tab:purple"),
+    ("Californian deck", 14.0, 30.0, -142.0, -110.0, "tab:blue"),
+    ("Azores", 20.0, 37.0, -45.0, -15.0, "tab:red"),
 ]
-
-
-def masked_area_mean(field: xr.DataArray, mask: xr.DataArray) -> float:
-    """
-    Compute area-weighted mean of `field` over grid cells where mask is True (mask>0.5).
-    """
-    field, mask = xr.align(field, mask, join="inner")
-    mask_bool = (mask > 0.5)
-    if int(mask_bool.sum().values) == 0:
-        return float(np.nan)
-
-    lat = field["lat"].values
-    weights = np.cos(np.deg2rad(lat))
-    weights_da = xr.DataArray(weights, coords={"lat": field["lat"]}, dims=("lat",))
-
-    weighted = field * mask_bool * weights_da
-    numerator = weighted.sum(dim=("lat", "lon"), skipna=True)
-    denominator = (mask_bool * weights_da).sum(dim=("lat", "lon"))
-    # protect against division by zero
-    if denominator.values == 0:
-        return float(np.nan)
-    return float((numerator / denominator).values)
 
 def main() -> None:
     ensure_manuscript_outputs(force=False)
@@ -85,46 +64,7 @@ def main() -> None:
     ax.set_xlabel("Sea surface temperature trend (K decade$^{-1}$)")
     ax.set_ylabel("Cloud radiative effect (W m$^{-2}$ decade$^{-1}$)")
     ax.set_title("CRE trend vs SST trend")
-
-    markers = ["o", "s", "D", "^", "v", "P", "X"]
-
-    # plot the seasonal regional mean points
-    for i_mask, (mask_name, color, label) in enumerate(MASK_VARS):
-        xs = []
-        ys = []
-        for season in SEASONS:
-            cloud_trend = ceres[cloud_var].sel(period=season) * 10.0  # -> per-decade
-            if sst_seasonal_var in sst:
-                sst_trend = sst[sst_seasonal_var].sel(season=season) * 10.0
-            else:
-                sst_trend = sst[sst_annual_var] * 10.0
-
-            if not np.array_equal(cloud_trend["lat"].values, sst_trend["lat"].values) or not np.array_equal(
-                cloud_trend["lon"].values, sst_trend["lon"].values
-            ):
-                sst_trend = regrid_to_target(sst_trend, cloud_trend["lat"], cloud_trend["lon"])
-
-            mask = masks[mask_name].sel(season=season)
-
-            mean_sst = masked_area_mean(sst_trend, mask)
-            mean_cloud = masked_area_mean(cloud_trend, mask)
-
-            xs.append(mean_sst)
-            ys.append(mean_cloud)
-
-        xs = np.array(xs, dtype=np.float64)
-        ys = np.array(ys, dtype=np.float64)
-        # accumulate for axis limits
-        if xs.size:
-            all_plot_x.extend(xs[np.isfinite(xs)].tolist())
-        if ys.size:
-            all_plot_y.extend(ys[np.isfinite(ys)].tolist())
-        ax.scatter(xs, ys, label=label, color=color, marker=markers[i_mask % len(markers)], s=80, edgecolor="k", linewidth=0.3)
-        for xi, yi, season in zip(xs, ys, SEASONS):
-            if np.isfinite(xi) and np.isfinite(yi):
-                ax.text(xi, yi, season, fontsize=8, ha="left", va="bottom", color="0.15")
-
-    # now grid point annual trends from boxes
+    
     cloud_annual = ceres[cloud_var].sel(period="annual") * 10.0
     # prefer annual SST trend if available
     if sst_annual_var in sst:
@@ -179,13 +119,6 @@ def main() -> None:
         xs_pts = sst_vals[valid]
         ys_pts = cloud_vals[valid]
 
-        ax.scatter(xs_pts, ys_pts, s=12, alpha=0.45, color=color, edgecolors="none", label=f"{name} gridpoints", zorder=4)
-
-        mean_x = float(np.nanmean(xs_pts))
-        mean_y = float(np.nanmean(ys_pts))
-        if np.isfinite(mean_x) and np.isfinite(mean_y):
-            ax.scatter([mean_x], [mean_y], s=80, marker="o", color=color, edgecolor="k", linewidth=0.3, zorder=6, label=f"{name} mean")
-
 
         slope, intercept = np.polyfit(xs_pts, ys_pts, 1)
         x_min = float(np.nanmin(xs_pts))
@@ -193,28 +126,30 @@ def main() -> None:
         pad = 0.05 * max(1e-6, x_max - x_min)
         x_line = np.linspace(x_min - pad, x_max + pad, 3)
         y_line = slope * x_line + intercept
+        ax.scatter(xs_pts, ys_pts, s=12, alpha=0.45, color=color, edgecolors="none", label=f"{name} feedback: {slope:.2f} W m$^{-2}$ K$^{-1}$", zorder=4)
         ax.plot(x_line, y_line, color=color, linestyle="--", linewidth=1.25, alpha=0.9, zorder=3)
-        print(f"{name}: cluster linear fit slope = {slope:.4f} (W m^-2 per K)")
+        print(f"{name}: cluster linear fit slope = {slope:.4f}")
 
-        # accumulate for axis limits
         all_plot_x.extend(xs_pts[np.isfinite(xs_pts)].tolist())
         all_plot_y.extend(ys_pts[np.isfinite(ys_pts)].tolist())
 
     x_arr = np.asarray(all_plot_x, dtype=np.float64)
     y_arr = np.asarray(all_plot_y, dtype=np.float64)
     valid = np.isfinite(x_arr) & np.isfinite(y_arr)
-    xmin, xmax = float(np.nanmin(x_arr[valid])), float(np.nanmax(x_arr[valid]))
-    ymin, ymax = float(np.nanmin(y_arr[valid])), float(np.nanmax(y_arr[valid]))
-    # add padding (5% of the largest data range)
-    xrng = max(xmax - xmin, 1e-6)
-    yrng = max(ymax - ymin, 1e-6)
-    pad = 0.05 * max(xrng, yrng)
-    ax.set_xlim(xmin - pad, xmax + pad)
-    ax.set_ylim(ymin - pad, ymax + pad)
-    # draw y=x
-    line_min = min(xmin - pad, ymin - pad)
-    line_max = max(xmax + pad, ymax + pad)
-    ax.plot([line_min, line_max], [line_min, line_max], linestyle=":", color="gray", label="y = x")
+    if not valid.any():
+        ax.autoscale()
+    else:
+        # show central 98% of the data (1st to 99th percentile) to zoom in and reduce outlier influence
+        xmin = float(np.nanpercentile(x_arr[valid], 1.0))
+        xmax = float(np.nanpercentile(x_arr[valid], 99.0))
+        ymin = float(np.nanpercentile(y_arr[valid], 1.0))
+        ymax = float(np.nanpercentile(y_arr[valid], 99.0))
+        # ensure non-zero ranges and add a small padding (2% of the larger range)
+        xrng = max(xmax - xmin, 1e-6)
+        yrng = max(ymax - ymin, 1e-6)
+        pad = 0.02 * max(xrng, yrng)
+        ax.set_xlim(xmin - pad, xmax + pad)
+        ax.set_ylim(ymin - pad, ymax + pad)
 
     ax.legend(frameon=False, loc="upper left", fontsize=8)
     ax.grid(alpha=0.3, linestyle=":")
@@ -285,9 +220,9 @@ def main() -> None:
         )
 
     map_ax.set_global()
-    map_ax.set_title("Tropical subsidence mask (union of seasons) and lat-lon boxes")
+    map_ax.set_title("Stratocumulus decks within regions of subsidence")
 
-    local_path, overleaf_path = save_figure_outputs(fig, FIGURE_FILE.name, dpi=300)
+    save_figure_outputs(fig, FIGURE_FILE.name, dpi=300)
     plt.close(fig)
 
 
