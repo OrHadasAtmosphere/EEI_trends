@@ -36,9 +36,9 @@ BOX_REGIONS = [
     # name, lat_min, lat_max, lon_min, lon_max, color
     ("Peruvian deck", -30.0, -10.0, -100.0, -70.0, "tab:orange"),
     ("Namibian deck", -30.0, -10.0, -15, 15, "tab:green"), 
-    #("Australian deck", -35.0, -20.0, 90.0, 115.0, "tab:purple"),
+    ("Australian deck", -35.0, -20.0, 90.0, 115.0, "tab:purple"),
     ("Californian deck", 10.0, 35.0, -140.0, -110.0, "tab:blue"),
-    #("Azores", 10.0, 25.0, -35.0, -15.0, "tab:red"),
+    ("Azores", 15.0, 30.0, -35.0, -15.0, "tab:red"),
 ]
 
 def main() -> None:
@@ -67,7 +67,7 @@ def main() -> None:
     ax.set_title("CRE trend vs SST trend")
 
     # prepare density colormap cycle and legend proxies
-    DENSITY_CMAPS = ["Reds", "Greens", "Blues", "Purples", "Oranges"]
+    DENSITY_CMAPS = ["Oranges", "Greens", "Blues", "Purples", "Reds"]
     density_handles: list = []
     density_labels: list[str] = []
 
@@ -151,8 +151,6 @@ def main() -> None:
         xs_pts = sst_vals[valid]
         ys_pts = cloud_vals[valid]
 
-        # --- density / KDE plot (scikit-learn KernelDensity) ----------------
-        # require a minimum number of points for a stable KDE
         # standardize to avoid bandwidth issues across axes
         x_mean, x_std = float(np.nanmean(xs_pts)), float(np.nanstd(xs_pts)) or 1.0
         y_mean, y_std = float(np.nanmean(ys_pts)), float(np.nanstd(ys_pts)) or 1.0
@@ -182,15 +180,19 @@ def main() -> None:
         dens = np.exp(log_dens).reshape(Xg.shape)
 
         slope, intercept = np.polyfit(xs_pts, ys_pts, 1)
-        x_min = float(np.nanmin(xs_pts))
-        x_max = float(np.nanmax(xs_pts))
-        pad = 0.05 * max(1e-6, x_max - x_min)
-        x_line = np.linspace(x_min - pad, x_max + pad, 3)
+        # limit plotted fit to the high-density KDE region
+        dens_thresh = float(np.nanpercentile(dens, 80.0))
+        high_mask = (dens >= dens_thresh)
+        seg_xmin = float(np.nanmin(Xg[high_mask]))
+        seg_xmax = float(np.nanmax(Xg[high_mask]))
+        # small padding so line reaches edges of high-density region comfortably
+        pad = 0.01 * max(1e-6, seg_xmax - seg_xmin)
+        x_line = np.linspace(seg_xmin - pad, seg_xmax + pad, 3)
         y_line = slope * x_line + intercept
-        ax.plot(x_line, y_line, color=color, linestyle="--", linewidth=1.25, alpha=0.9, zorder=3, label=f"{name} feedback: {slope:.2f} Wm$^-2$K$^-1$")
+        ax.plot(x_line, y_line, color=color, linestyle="--", linewidth=2, alpha=0.9, zorder=3, label=f"{name} feedback: {slope:.2f} Wm$^-2$K$^-1$")
         print(f"{name}: cluster linear fit slope = {slope:.4f}")
 
-        ax.scatter(xs_pts, ys_pts, s=12, alpha=0.55, color=color, edgecolors="none", label=f"{name} gridpoints", zorder=4)
+        ax.scatter(xs_pts, ys_pts, s=12, alpha=0.55, color=color, edgecolors="none", label=f"{name}", zorder=4)
 
         # normalize density for nicer contour alpha mapping
         norm = Normalize(vmin=np.nanpercentile(dens, 5.0), vmax=np.nanpercentile(dens, 98.0))
@@ -207,7 +209,7 @@ def main() -> None:
             alpha=0.35,
             norm=norm,
             zorder=2,
-            extend="both",
+            extend="neither",
         )
         # create a proxy patch for the density legend (use a mid-tone from the cmap)
         proxy_color = cmap(0.6)
