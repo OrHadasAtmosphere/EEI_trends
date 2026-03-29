@@ -36,9 +36,9 @@ BOX_REGIONS = [
     # name, lat_min, lat_max, lon_min, lon_max, color
     ("Peruvian deck", -30.0, -10.0, -100.0, -70.0, "tab:orange"),
     ("Namibian deck", -30.0, -10.0, -15, 15, "tab:green"), 
-    ("Australian deck", -35.0, -20.0, 90.0, 115.0, "tab:purple"),
+    #("Australian deck", -35.0, -20.0, 90.0, 115.0, "tab:purple"),
     ("Californian deck", 10.0, 35.0, -140.0, -110.0, "tab:blue"),
-    ("Azores", 15.0, 30.0, -35.0, -15.0, "tab:red"),
+    #("Azores", 15.0, 30.0, -35.0, -15.0, "tab:red"),
 ]
 
 def main() -> None:
@@ -160,7 +160,7 @@ def main() -> None:
         samples = np.vstack([xs_std, ys_std]).T
 
         # fit KDE in standardized space; bandwidth chosen empirically
-        kde = KernelDensity(bandwidth=0.4, kernel="gaussian")
+        kde = KernelDensity(bandwidth=0.25, kernel="gaussian")
         kde.fit(samples)
 
         # build evaluation grid in original units (zoom to cluster extent)
@@ -199,17 +199,20 @@ def main() -> None:
         # choose a per-box sequential colormap from the small palette
         cmap_name = DENSITY_CMAPS[i % len(DENSITY_CMAPS)]
         cmap = plt.get_cmap(cmap_name)
-        # draw filled contours under the scatter (low alpha)
+        # Mask low-density values
+        dens_masked = np.ma.masked_where(dens < np.nanpercentile(dens, 20.0), dens)
+
+        # Make masked values transparent
+        cmap = plt.get_cmap(cmap_name).copy()
+        cmap.set_under('none')  # Transparent for values below vmin
+
         cf = ax.contourf(
-            Xg,
-            Yg,
-            dens,
+            Xg, Yg, dens_masked,
             levels=8,
             cmap=cmap,
             alpha=0.35,
             norm=norm,
             zorder=2,
-            extend="neither",
         )
         # create a proxy patch for the density legend (use a mid-tone from the cmap)
         proxy_color = cmap(0.6)
@@ -223,27 +226,20 @@ def main() -> None:
         all_plot_x.extend(xs_pts[np.isfinite(xs_pts)].tolist())
         all_plot_y.extend(ys_pts[np.isfinite(ys_pts)].tolist())
 
+    # set ax limits
     x_arr = np.asarray(all_plot_x, dtype=np.float64)
     y_arr = np.asarray(all_plot_y, dtype=np.float64)
     valid = np.isfinite(x_arr) & np.isfinite(y_arr)
-    if not valid.any():
-        ax.autoscale()
-    else:
-        # show central 98% of the data (1st to 99th percentile) to zoom in and reduce outlier influence
-        xmin = float(np.nanpercentile(x_arr[valid], 1.0))
-        xmax = float(np.nanpercentile(x_arr[valid], 99.0))
-        ymin = float(np.nanpercentile(y_arr[valid], 1.0))
-        ymax = float(np.nanpercentile(y_arr[valid], 99.0))
-        # ensure non-zero ranges and add a small padding (2% of the larger range)
-        xrng = max(xmax - xmin, 1e-6)
-        yrng = max(ymax - ymin, 1e-6)
-        pad = 0.02 * max(xrng, yrng)
-        ax.set_xlim(xmin - pad, xmax + pad)
-        ax.set_ylim(ymin - pad, ymax + pad)
+    xmin = x_arr.min()
+    xmax = float(np.nanpercentile(x_arr[valid], 99.5))
+    ymin = y_arr.min()
+    ymax = float(np.nanpercentile(y_arr[valid], 99.5))
+    ax.set_xlim(xmin, xmax)
+    ax.set_ylim(ymin, ymax)
 
     # add solid black axes at x=0 and y=0
-    ax.axvline(0.0, color="k", linewidth=0.8, zorder=2)
-    ax.axhline(0.0, color="k", linewidth=0.8, zorder=2)
+    ax.axvline(0.0, color="k", linewidth=0.3, zorder=2)
+    ax.axhline(0.0, color="k", linewidth=0.3, zorder=2)
 
     # merge existing legend entries (gridpoints / mean / fit lines) with density proxies
     handles, labels = ax.get_legend_handles_labels()
