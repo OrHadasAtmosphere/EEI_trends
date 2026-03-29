@@ -62,8 +62,8 @@ def main() -> None:
     all_plot_x: list[float] = []
     all_plot_y: list[float] = []
 
-    ax.set_xlabel("Sea surface temperature trend (K decade$^{-1}$)")
-    ax.set_ylabel("Cloud radiative effect (W m$^{-2}$ decade$^{-1}$)")
+    ax.set_xlabel("SST trend (ERA5) (K decade$^{-1}$)")
+    ax.set_ylabel("CRE (CERES) (W m$^{-2}$ decade$^{-1}$)")
     ax.set_title("Regional Stratocumulus-SST coupled radiative feedbacks")
 
     # prepare density colormap cycle and legend proxies
