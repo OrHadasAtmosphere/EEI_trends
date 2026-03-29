@@ -54,7 +54,7 @@ def main() -> None:
     sst_seasonal_var = "sst_trend"
     sst_annual_var = "annual_sst_trend"
 
-    fig = plt.figure(figsize=(9, 11), constrained_layout=True)
+    fig = plt.figure(figsize=(10, 12), constrained_layout=True)
     gs = fig.add_gridspec(2, 1, height_ratios=(3, 2))
     ax = fig.add_subplot(gs[0, 0])
     map_ax = fig.add_subplot(gs[1, 0], projection=ccrs.Robinson(central_longitude=220))
@@ -64,7 +64,7 @@ def main() -> None:
 
     ax.set_xlabel("Sea surface temperature trend (K decade$^{-1}$)")
     ax.set_ylabel("Cloud radiative effect (W m$^{-2}$ decade$^{-1}$)")
-    ax.set_title("CRE trend vs SST trend")
+    ax.set_title("Regional Stratocumulus-SST coupled radiative feedbacks")
 
     # prepare density colormap cycle and legend proxies
     DENSITY_CMAPS = ["Oranges", "Greens", "Blues", "Purples", "Reds"]
@@ -180,7 +180,7 @@ def main() -> None:
         dens = np.exp(log_dens).reshape(Xg.shape)
 
         slope, intercept = np.polyfit(xs_pts, ys_pts, 1)
-        # limit plotted fit to the high-density KDE region
+        # plot fit in the high-density region
         dens_thresh = float(np.nanpercentile(dens, 80.0))
         high_mask = (dens >= dens_thresh)
         seg_xmin = float(np.nanmin(Xg[high_mask]))
@@ -189,10 +189,10 @@ def main() -> None:
         pad = 0.01 * max(1e-6, seg_xmax - seg_xmin)
         x_line = np.linspace(seg_xmin - pad, seg_xmax + pad, 3)
         y_line = slope * x_line + intercept
-        ax.plot(x_line, y_line, color=color, linestyle="--", linewidth=2, alpha=0.9, zorder=3, label=f"{name} feedback: {slope:.2f} Wm$^-2$K$^-1$")
+        ax.plot(x_line, y_line, color=color, linestyle="--", linewidth=2, alpha=0.9, zorder=3)
         print(f"{name}: cluster linear fit slope = {slope:.4f}")
 
-        ax.scatter(xs_pts, ys_pts, s=12, alpha=0.55, color=color, edgecolors="none", label=f"{name}", zorder=4)
+        ax.scatter(xs_pts, ys_pts, s=12, alpha=0.55, color=color, edgecolors="none", zorder=4)
 
         # normalize density for nicer contour alpha mapping
         norm = Normalize(vmin=np.nanpercentile(dens, 5.0), vmax=np.nanpercentile(dens, 98.0))
@@ -208,7 +208,7 @@ def main() -> None:
 
         cf = ax.contourf(
             Xg, Yg, dens_masked,
-            levels=8,
+            levels=4,
             cmap=cmap,
             alpha=0.35,
             norm=norm,
@@ -217,11 +217,7 @@ def main() -> None:
         # create a proxy patch for the density legend (use a mid-tone from the cmap)
         proxy_color = cmap(0.6)
         density_handles.append(mpatches.Patch(facecolor=proxy_color, edgecolor="none", alpha=0.6))
-        density_labels.append(f"{name} kernel density, 8 levels")
-
-        # plot all grid-point pairs inside the box (small semi-transparent points)
-
-
+        density_labels.append(f"{name} feedback: {slope:.2f} Wm$^-2$K$^-1$")
 
         all_plot_x.extend(xs_pts[np.isfinite(xs_pts)].tolist())
         all_plot_y.extend(ys_pts[np.isfinite(ys_pts)].tolist())
@@ -246,7 +242,7 @@ def main() -> None:
     if density_handles:
         handles = handles + density_handles
         labels = labels + density_labels
-    ax.legend(handles=handles, labels=labels, frameon=False, loc="upper left", fontsize=8)
+    ax.legend(handles=handles, labels=labels, frameon=False, loc="lower right", fontsize=8)
     ax.grid(alpha=0.3, linestyle=":")
 
     # bottom panel: global map showing the tropical-subsidence mask used
