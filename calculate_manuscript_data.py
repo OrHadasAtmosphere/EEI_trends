@@ -10,7 +10,7 @@ import xarray as xr
 from trend_utils import fit_trend_map
 
 
-STORM_MATRICS = "EKE"
+STORM_MATRICS = "SLP"
 CENTRAL_LONGITUDE = -135
 SCRIPT_DIR = Path(__file__).resolve().parent
 OUTPUT_DIR = SCRIPT_DIR / "output"
@@ -48,24 +48,25 @@ SKY_LABELS = {
     "all_clear": "all-sky minus clear-sky",
 }
 REGION_NAMES = (
-    "NH ice",
-    "SH ice",
-    "NH storm track",
-    "SH storm track",
+    "NH Polar Cryosphere",
+    "SH Polar Cryosphere",
+    "NH Storm Track",
+    "SH Storm Track",
     "Tropical Descent",
+    "Deserts",
     "Tropical Ascent",
-    "midlatitude non-storm",
-    "tropical remainder",
+    "Remaider",
 )
-STORM_TRACK_NH_FACTOR = 0.25
-STORM_TRACK_SH_FACTOR = 0.35
+
+STORM_TRACK_NH_FACTOR = 0.3
+STORM_TRACK_SH_FACTOR = 0.4
 OMEGA_POS_FACTOR = 0.05
 OMEGA_NEG_FACTOR = 0.05
 ICE_FACTOR = 0.1
 OMEGA_LATITUDE_LIMIT = 40.0
-SEASON_TIME_WEIGHT = 0.25
 RADIATION_TREND_START_YEAR = 2001
 RADIATION_TREND_END_YEAR = 2024
+POLAR_LATITUDE_LIMIT = 60.0
 
 
 def ensure_required_variables(ds: xr.Dataset, required: set[str], context: str) -> None:
@@ -103,14 +104,70 @@ def group_complete_means(
     labels: xr.DataArray,
     expected_count: int,
     output_dim: str,
+    *,
+    time_weights: xr.DataArray | None = None,
 ) -> xr.DataArray:
-    grouped = da.groupby(labels).mean("time", skipna=True)
+    if time_weights is None:
+        grouped = da.groupby(labels).mean("time", skipna=True)
+    else:
+        weighted_sum = (da * time_weights).groupby(labels).sum("time", skipna=True)
+        weight_sum = (
+            time_weights.broadcast_like(da)
+            .where(np.isfinite(da))
+            .groupby(labels)
+            .sum("time", skipna=True)
+        )
+        grouped = weighted_sum / weight_sum
     grouped = grouped.rename({labels.name: output_dim})
 
     counts = labels.groupby(labels).count()
     counts = counts.rename({labels.name: output_dim})
     valid_groups = counts.where(counts == expected_count, drop=True)[output_dim]
     return grouped.sel({output_dim: valid_groups})
+
+
+def annual_year_labels(
+    da: xr.DataArray,
+    *,
+    label_mode: str = "calendar",
+) -> xr.DataArray:
+    year = da["time"].dt.year.values.astype(np.int32)
+    if label_mode == "march_to_february":
+        year = year.copy()
+        year[da["time"].dt.month.values <= 2] -= 1
+    elif label_mode != "calendar":
+        raise ValueError(f"Unsupported annual label mode: {label_mode}")
+
+    return xr.DataArray(
+        year,
+        coords={"time": da["time"]},
+        dims=("time",),
+        name="year",
+    )
+
+
+def season_year_labels(
+    da: xr.DataArray,
+    season: str,
+    *,
+    djf_mode: str = "next_year",
+) -> xr.DataArray:
+    season_year = da["time"].dt.year.values.astype(np.int32)
+    if season == "DJF":
+        december = da["time"].dt.month.values == 12
+        if djf_mode == "next_year":
+            season_year = season_year + december.astype(np.int32)
+        elif djf_mode == "december_year":
+            season_year = season_year - (~december).astype(np.int32)
+        else:
+            raise ValueError(f"Unsupported DJF aggregation mode: {djf_mode}")
+
+    return xr.DataArray(
+        season_year,
+        coords={"time": da["time"]},
+        dims=("time",),
+        name="season_year",
+    )
 
 
 def select_year_bounds(
@@ -127,14 +184,17 @@ def annual_means(
     da: xr.DataArray,
     *,
     year_bounds: tuple[int, int] | None = None,
+    label_mode: str = "calendar",
+    time_weights: xr.DataArray | None = None,
 ) -> xr.DataArray:
-    labels = xr.DataArray(
-        da["time"].dt.year.values,
-        coords={"time": da["time"]},
-        dims=("time",),
-        name="year",
+    labels = annual_year_labels(da, label_mode=label_mode)
+    grouped = group_complete_means(
+        da,
+        labels,
+        expected_count=12,
+        output_dim="year",
+        time_weights=time_weights,
     )
-    grouped = group_complete_means(da, labels, expected_count=12, output_dim="year")
     return select_year_bounds(grouped, year_bounds)
 
 
@@ -144,31 +204,54 @@ def seasonal_means(
     *,
     year_bounds: tuple[int, int] | None = None,
     djf_mode: str = "next_year",
+    time_weights: xr.DataArray | None = None,
 ) -> xr.DataArray:
     season_da = da.where(da["time"].dt.season == season, drop=True)
-    season_year = season_da["time"].dt.year.values.astype(np.int32)
-    if season == "DJF":
-        december = season_da["time"].dt.month.values == 12
-        if djf_mode == "next_year":
-            season_year = season_year + december.astype(np.int32)
-        elif djf_mode == "december_year":
-            season_year = season_year - (~december).astype(np.int32)
-        else:
-            raise ValueError(f"Unsupported DJF aggregation mode: {djf_mode}")
-
-    labels = xr.DataArray(
-        season_year,
-        coords={"time": season_da["time"]},
-        dims=("time",),
-        name="season_year",
+    season_weights = (
+        None if time_weights is None else time_weights.sel(time=season_da["time"])
     )
+    labels = season_year_labels(season_da, season, djf_mode=djf_mode)
     grouped = group_complete_means(
         season_da,
         labels,
         expected_count=3,
         output_dim="year",
+        time_weights=season_weights,
     )
     return select_year_bounds(grouped, year_bounds)
+
+
+def month_length_weights(da: xr.DataArray) -> xr.DataArray:
+    return xr.DataArray(
+        da["time"].dt.days_in_month.values.astype(np.float64),
+        coords={"time": da["time"]},
+        dims=("time",),
+        name="days_in_month",
+    )
+
+
+def seasonal_time_fractions(
+    time: xr.DataArray,
+    years: np.ndarray,
+    *,
+    djf_mode: str = "december_year",
+) -> xr.DataArray:
+    month_lengths = xr.DataArray(
+        time.dt.days_in_month.values.astype(np.float64),
+        coords={"time": time},
+        dims=("time",),
+        name="days_in_month",
+    )
+    season_weights: list[xr.DataArray] = []
+    for season in SEASONS:
+        season_lengths = month_lengths.where(time.dt.season == season, drop=True)
+        labels = season_year_labels(season_lengths, season, djf_mode=djf_mode)
+        grouped_days = season_lengths.groupby(labels).sum("time", skipna=True)
+        grouped_days = grouped_days.rename({labels.name: "year"}).sel(year=years)
+        season_weights.append(grouped_days.sum("year").expand_dims(season=[season]))
+
+    total_days = xr.concat(season_weights, dim="season")
+    return total_days / total_days.sum("season")
 
 
 def area_weighted_global_mean(da: xr.DataArray) -> xr.DataArray:
@@ -381,6 +464,7 @@ def build_ceres_dataset(input_file: Path = CERES_INPUT_FILE) -> xr.Dataset:
     monthly = load_aligned_ceres_fluxes(
         input_file=input_file, insolation_file=INSOLATION_FILE
     )
+    time_weights = month_length_weights(monthly["all_sky_net"])
     radiation_year_bounds = (RADIATION_TREND_START_YEAR, RADIATION_TREND_END_YEAR)
     fields = {
         "all_sky": {
@@ -519,18 +603,53 @@ def build_ceres_dataset(input_file: Path = CERES_INPUT_FILE) -> xr.Dataset:
             "shortwave minus global-mean outgoing longwave."
         ),
     )
-    annual_global_eei = annual_means(
-        global_eei,
-        year_bounds=radiation_year_bounds,
+    seasonal_global_eei = {
+        season: seasonal_means(
+            global_eei,
+            season,
+            year_bounds=radiation_year_bounds,
+            djf_mode="december_year",
+            time_weights=time_weights,
+        )
+        for season in SEASONS
+    }
+    common_years = seasonal_global_eei["DJF"]["year"].values.astype(np.int32)
+    for season in SEASONS[1:]:
+        common_years = np.intersect1d(
+            common_years,
+            seasonal_global_eei[season]["year"].values.astype(np.int32),
+        )
+    season_weights = seasonal_time_fractions(
+        global_eei["time"], common_years, djf_mode="december_year"
+    )
+    annual_global_eei = xr.DataArray(
+        np.tensordot(
+            season_weights.values.astype(np.float64),
+            np.stack(
+                [
+                    seasonal_global_eei[season].sel(year=common_years).values
+                    for season in SEASONS
+                ],
+                axis=0,
+            ),
+            axes=(0, 0),
+        ),
+        coords={"year": common_years},
+        dims=("year",),
+        name="all_sky_global_net_annual_mean",
     ).astype(np.float32)
     annual_global_eei.name = "all_sky_global_net_annual_mean"
     annual_global_eei.attrs.update(
         long_name="Annual global-mean all-sky EEI",
         units="W m-2",
+        description=(
+            "Reconstructed from day-weighted seasonal global means using the same "
+            "season-year labeling as the DJF diagnostics."
+        ),
     )
     # fit trend and 95% confidence interval for the annual global series
-    global_trend, global_ci95, annual_global_fit, _ = fit_trend_with_confidence_interval(
-        annual_global_eei, coord="year"
+    global_trend, global_ci95, annual_global_fit, _ = (
+        fit_trend_with_confidence_interval(annual_global_eei, coord="year")
     )
     annual_global_fit = annual_global_fit.astype(np.float32)
     annual_global_fit.name = "all_sky_global_net_annual_fit"
@@ -571,6 +690,10 @@ def build_ceres_dataset(input_file: Path = CERES_INPUT_FILE) -> xr.Dataset:
         ),
         djf_definition=(
             "December of the labeled year with January-February of the following year."
+        ),
+        annual_global_definition=(
+            "Annual global means are reconstructed from weighted MAM, JJA, SON, and "
+            "DJF means sharing the same labeled year."
         ),
         note=(
             "Net EEI is computed as incoming shortwave minus outgoing shortwave minus "
@@ -666,6 +789,28 @@ def build_sst_dataset(input_file: Path = SST_INPUT_FILE) -> xr.Dataset:
     return out
 
 
+def build_land_mask_from_sst(
+    target_lat: xr.DataArray,
+    target_lon: xr.DataArray,
+    input_file: Path = SST_INPUT_FILE,
+) -> xr.DataArray:
+    sst = load_monthly_sst(input_file)
+    ocean_mask = sst.notnull().any("time").astype(np.float32)
+
+    wrap_lon = float(ocean_mask["lon"].isel(lon=0)) + 360.0
+    wrapped_edge = ocean_mask.isel(lon=0).assign_coords(lon=wrap_lon)
+    ocean_mask = xr.concat([ocean_mask, wrapped_edge], dim="lon")
+
+    ocean_fraction = ocean_mask.interp(lat=target_lat, lon=target_lon)
+    land_mask = ocean_fraction.fillna(0.0) <= 0.5
+    land_mask.name = "land_mask"
+    land_mask.attrs.update(
+        long_name="Land inferred from SST cells missing for all times",
+        source_file=str(input_file),
+    )
+    return land_mask
+
+
 def regrid_to_target(
     da: xr.DataArray, target_lat: xr.DataArray, target_lon: xr.DataArray
 ) -> xr.DataArray:
@@ -687,7 +832,11 @@ def load_mask_drivers() -> tuple[xr.DataArray, xr.DataArray, xr.DataArray]:
     omega = xr.concat([omega_annual, omega_seasonal], dim="period").assign_coords(
         period=list(PERIODS)
     )
-    slp_monthly = xr.open_dataset(STORM_FILE)[STORM_MATRICS].mean("year").sortby("lat")
+    if STORM_MATRICS == "SLP":
+        var = STORM_MATRICS + "_var"
+    else:
+        var = STORM_MATRICS
+    slp_monthly = xr.open_dataset(STORM_FILE)[var].mean("year").sortby("lat")
     slp_fields = [slp_monthly.mean("month", skipna=True).expand_dims(period=["annual"])]
     for season in SEASONS:
         seasonal_mean = slp_monthly.sel(month=SEASON_MONTHS[season]).mean(
@@ -729,46 +878,66 @@ def limits(slp: xr.DataArray, omega: xr.DataArray) -> tuple[float, float, float,
 
 
 def build_region_masks(
-    slp: xr.DataArray, omega: xr.DataArray, ice: xr.DataArray
+    slp: xr.DataArray,
+    omega: xr.DataArray,
+    ice: xr.DataArray,
+    land_mask: xr.DataArray,
 ) -> dict[str, xr.DataArray]:
     slp_nh_limit, slp_sh_limit, pos_limit, neg_limit = limits(slp, omega)
     lat2d, _ = xr.broadcast(slp["lat"], slp["lon"])
     ice_mask = ice > ICE_FACTOR
+    ocean_mask = ~land_mask
     nh_ice = (lat2d > 0) & ice_mask
-    sh_ice = (lat2d < 0) & ice_mask
+    sh_ice = ((lat2d < 0) & ice_mask) | (land_mask & (lat2d < -60))
 
     nh_storm = (lat2d > 0) & (~ice_mask) & (slp >= slp_nh_limit)
     sh_storm = (lat2d < 0) & (~ice_mask) & (slp >= slp_sh_limit)
     storm_track = nh_storm | sh_storm
     equatorward = np.abs(lat2d) < OMEGA_LATITUDE_LIMIT
 
-    nh_positive_omega = (
-        (lat2d > 0) & equatorward & (~storm_track) & (~ice_mask) & (omega >= pos_limit)
-    )
-    sh_positive_omega = (
-        (lat2d < 0) & equatorward & (~storm_track) & (~ice_mask) & (omega >= pos_limit)
-    )
-    tropical_descent = nh_positive_omega | sh_positive_omega
-    tropical_ascent = equatorward & (~storm_track) & (~ice_mask) & (omega <= neg_limit)
-    midlatitude_non_storm = (~storm_track) & (~equatorward) & (~ice_mask)
-    tropical_remainder = (
-        equatorward
+    nh_positive_omega_ocean = (
+        (lat2d > 0)
+        & equatorward
         & (~storm_track)
         & (~ice_mask)
-        & (~tropical_descent)
-        & (~tropical_ascent)
+        & (omega >= pos_limit)
+        & ocean_mask
     )
-
-    return {
-        "NH ice": nh_ice,
-        "SH ice": sh_ice,
-        "NH storm track": nh_storm,
-        "SH storm track": sh_storm,
-        "Tropical Descent": tropical_descent,
-        "Tropical Ascent": tropical_ascent,
-        "midlatitude non-storm": midlatitude_non_storm,
-        "tropical remainder": tropical_remainder,
-    }
+    sh_positive_omega_ocean = (
+        (lat2d < 0)
+        & equatorward
+        & (~storm_track)
+        & (~ice_mask)
+        & (omega >= pos_limit)
+        & ocean_mask
+    )
+    tropical_descent = nh_positive_omega_ocean | sh_positive_omega_ocean
+    deserts = (
+        equatorward & (~storm_track) & (~ice_mask) & (omega >= pos_limit) & land_mask
+    )
+    tropical_ascent = equatorward & (~storm_track) & (~ice_mask) & (omega <= neg_limit)
+    remainder = (
+        (~storm_track)
+        & (~tropical_descent)
+        & (~deserts)
+        & (~tropical_ascent)
+        & (~nh_ice)
+        & (~sh_ice)
+    )
+    data = [
+        nh_ice,
+        sh_ice,
+        nh_storm,
+        sh_storm,
+        tropical_descent,
+        deserts,
+        tropical_ascent,
+    ]
+    data += [remainder]
+    out_dic = {}
+    for name, mask in zip(REGION_NAMES, data):
+        out_dic[name] = mask
+    return out_dic
 
 
 def weighted_region_statistics(
@@ -802,6 +971,7 @@ def build_masks_and_contributions(
     ceres_ds: xr.Dataset,
 ) -> tuple[xr.Dataset, xr.Dataset]:
     monthly = load_aligned_ceres_fluxes()
+    time_weights = month_length_weights(monthly["all_sky_net"])
     radiation_year_bounds = (RADIATION_TREND_START_YEAR, RADIATION_TREND_END_YEAR)
     seasonal_trend = ceres_ds["all_sky_net_trend"].sel(period=list(SEASONS))
     target_lat = seasonal_trend["lat"]
@@ -817,6 +987,7 @@ def build_masks_and_contributions(
     seasonal_ice = regrid_to_target(
         ice.sel(period=list(SEASONS)), target_lat, target_lon
     )
+    land_mask = build_land_mask_from_sst(target_lat, target_lon)
 
     weights = xr.DataArray(
         np.cos(np.deg2rad(target_lat.data)),
@@ -837,6 +1008,9 @@ def build_masks_and_contributions(
     combined_pos_omega = np.zeros(
         (len(SEASONS), target_lat.size, target_lon.size), dtype=np.int8
     )
+    combined_pos_omega_land = np.zeros(
+        (len(SEASONS), target_lat.size, target_lon.size), dtype=np.int8
+    )
     combined_neg_omega = np.zeros(
         (len(SEASONS), target_lat.size, target_lon.size), dtype=np.int8
     )
@@ -846,6 +1020,7 @@ def build_masks_and_contributions(
             season,
             year_bounds=radiation_year_bounds,
             djf_mode="december_year",
+            time_weights=time_weights,
         )
         for season in SEASONS
     }
@@ -856,6 +1031,9 @@ def build_masks_and_contributions(
     for years in seasonal_years[1:]:
         common_years = np.intersect1d(common_years, years)
     common_years = common_years.astype(np.int32)
+    season_weights = seasonal_time_fractions(
+        monthly["all_sky_net"]["time"], common_years, djf_mode="december_year"
+    )
 
     seasonal_region_series = np.full(
         (len(SEASONS), len(REGION_NAMES), common_years.size), np.nan, dtype=np.float64
@@ -896,25 +1074,36 @@ def build_masks_and_contributions(
         len(SEASONS), np.nan, dtype=np.float64
     )
     seasonal_global_sample_count = np.full(len(SEASONS), 0, dtype=np.int16)
+    desert_series = np.full((len(SEASONS), common_years.size), np.nan, dtype=np.float64)
+    desert_trend = np.full(len(SEASONS), np.nan, dtype=np.float64)
+    desert_ci95 = np.full(len(SEASONS), np.nan, dtype=np.float64)
+    desert_area_fraction = np.full(len(SEASONS), np.nan, dtype=np.float64)
+    desert_contribution_trend = np.full(len(SEASONS), np.nan, dtype=np.float64)
+    desert_contribution_percent = np.full(len(SEASONS), np.nan, dtype=np.float64)
+    desert_sample_count = np.full(len(SEASONS), 0, dtype=np.int16)
+    annual_desert_series = np.full(common_years.size, np.nan, dtype=np.float64)
+    annual_desert_trend = np.nan
+    annual_desert_ci95 = np.nan
+    annual_desert_contribution_trend = np.nan
+    annual_desert_contribution_percent = np.nan
+    annual_desert_sample_count = np.int16(0)
 
-    annual_global_series = ceres_ds["all_sky_global_net_annual_mean"].sel(
-        year=common_years
+    annual_global_series = xr.DataArray(
+        np.full(common_years.size, np.nan, dtype=np.float64),
+        coords={"year": common_years},
+        dims=("year",),
+        name="annual_global_series",
     )
-    annual_global_trend = float(ceres_ds["all_sky_global_net_annual_trend"])
+    annual_global_trend = np.nan
     annual_global_ci95 = np.nan
-    if common_years.size >= 3:
-        annual_global_trend, annual_global_ci95, _, _ = (
-            fit_trend_with_confidence_interval(
-                annual_global_series,
-                coord="year",
-            )
-        )
 
     for season_index, season in enumerate(SEASONS):
+        season_weight = float(season_weights.sel(season=season))
         masks = build_region_masks(
             seasonal_slp.sel(period=season),
             seasonal_omega.sel(period=season),
             seasonal_ice.sel(period=season),
+            land_mask,
         )
         seasonal_field = seasonal_fields[season].sel(year=common_years)
         global_series = area_weighted_global_mean(
@@ -931,14 +1120,6 @@ def build_masks_and_contributions(
         seasonal_global_trend[season_index] = global_slope
         seasonal_global_ci95[season_index] = global_ci95
         seasonal_global_sample_count[season_index] = global_n_valid
-        if (
-            np.isfinite(global_slope)
-            and np.isfinite(annual_global_trend)
-            and not np.isclose(annual_global_trend, 0.0)
-        ):
-            seasonal_global_contribution_percent[season_index] = (
-                100.0 * SEASON_TIME_WEIGHT * global_slope / annual_global_trend
-            )
 
         for region_index, region_name in enumerate(REGION_NAMES):
             mask = masks[region_name]
@@ -950,38 +1131,79 @@ def build_masks_and_contributions(
                 coord="year",
             )
             area_fraction = effective_area_fraction(mask)
-            contribution_trend = SEASON_TIME_WEIGHT * area_fraction * slope
-            contribution_percent = np.nan
-            if (
-                np.isfinite(contribution_trend)
-                and np.isfinite(annual_global_trend)
-                and not np.isclose(annual_global_trend, 0.0)
-            ):
-                contribution_percent = 100.0 * contribution_trend / annual_global_trend
+            contribution_trend = season_weight * area_fraction * slope
 
             seasonal_region_trend[season_index, region_index] = slope
             seasonal_region_ci95[season_index, region_index] = ci95
             seasonal_area_fraction[season_index, region_index] = area_fraction
             seasonal_contribution_trend[season_index, region_index] = contribution_trend
-            seasonal_contribution_percent[season_index, region_index] = (
-                contribution_percent
-            )
             seasonal_sample_count[season_index, region_index] = n_valid
-
         combined_ice[season_index] = (
-            (masks["NH ice"] | masks["SH ice"]).astype(np.int8).values
+            (masks[REGION_NAMES[0]] | masks[REGION_NAMES[1]]).astype(np.int8).values
         )
         combined_storm[season_index] = (
-            (masks["NH storm track"] | masks["SH storm track"]).astype(np.int8).values
+            (masks[REGION_NAMES[2]] | masks[REGION_NAMES[3]]).astype(np.int8).values
         )
         combined_pos_omega[season_index] = (
             masks["Tropical Descent"].astype(np.int8).values
         )
+        combined_pos_omega_land[season_index] = masks["Deserts"].astype(np.int8).values
         combined_neg_omega[season_index] = (
             masks["Tropical Ascent"].astype(np.int8).values
         )
 
-    annual_region_series = seasonal_region_series.mean(axis=0)
+        desert_mask = masks["Deserts"]
+        desert_regional_series = area_weighted_mean_over_mask(
+            seasonal_field, desert_mask
+        )
+        desert_series[season_index] = desert_regional_series.values
+        slope, ci95, _, n_valid = fit_trend_with_confidence_interval(
+            desert_regional_series,
+            coord="year",
+        )
+        area_fraction = effective_area_fraction(desert_mask)
+        contribution_trend = season_weight * area_fraction * slope
+
+        desert_trend[season_index] = slope
+        desert_ci95[season_index] = ci95
+        desert_area_fraction[season_index] = area_fraction
+        desert_contribution_trend[season_index] = contribution_trend
+        desert_sample_count[season_index] = n_valid
+
+    annual_global_series = xr.DataArray(
+        np.tensordot(
+            season_weights.values.astype(np.float64),
+            seasonal_global_series,
+            axes=(0, 0),
+        ),
+        coords={"year": common_years},
+        dims=("year",),
+        name="annual_global_series",
+    )
+    if common_years.size >= 3:
+        annual_global_trend, annual_global_ci95, _, _ = (
+            fit_trend_with_confidence_interval(
+                annual_global_series,
+                coord="year",
+            )
+        )
+
+    if np.isfinite(annual_global_trend) and not np.isclose(annual_global_trend, 0.0):
+        seasonal_global_contribution_percent[:] = (
+            100.0 * season_weights.values * seasonal_global_trend / annual_global_trend
+        )
+        seasonal_contribution_percent[:] = (
+            100.0 * seasonal_contribution_trend / annual_global_trend
+        )
+        desert_contribution_percent[:] = (
+            100.0 * desert_contribution_trend / annual_global_trend
+        )
+
+    annual_region_series = np.tensordot(
+        season_weights.values.astype(np.float64),
+        seasonal_region_series,
+        axes=(0, 0),
+    )
     for region_index in range(len(REGION_NAMES)):
         annual_series_da = xr.DataArray(
             annual_region_series[region_index],
@@ -999,14 +1221,35 @@ def build_masks_and_contributions(
         annual_contribution_trend[region_index] = np.nansum(
             seasonal_contribution_trend[:, region_index]
         )
-        if (
-            np.isfinite(annual_contribution_trend[region_index])
-            and np.isfinite(annual_global_trend)
-            and not np.isclose(annual_global_trend, 0.0)
-        ):
-            annual_contribution_percent[region_index] = (
-                100.0 * annual_contribution_trend[region_index] / annual_global_trend
-            )
+
+    annual_desert_series = np.tensordot(
+        season_weights.values.astype(np.float64),
+        desert_series,
+        axes=(0, 0),
+    )
+    annual_desert_series_da = xr.DataArray(
+        annual_desert_series,
+        coords={"year": common_years},
+        dims=("year",),
+        name="annual_desert_series",
+    )
+    (
+        annual_desert_trend,
+        annual_desert_ci95,
+        _,
+        annual_desert_sample_count,
+    ) = fit_trend_with_confidence_interval(
+        annual_desert_series_da,
+        coord="year",
+    )
+    annual_desert_contribution_trend = np.nansum(desert_contribution_trend)
+    if np.isfinite(annual_global_trend) and not np.isclose(annual_global_trend, 0.0):
+        annual_contribution_percent[:] = (
+            100.0 * annual_contribution_trend / annual_global_trend
+        )
+        annual_desert_contribution_percent = (
+            100.0 * annual_desert_contribution_trend / annual_global_trend
+        )
 
     masks_ds = xr.Dataset(
         data_vars={
@@ -1017,6 +1260,10 @@ def build_masks_and_contributions(
             "ice_mask": (("season", "lat", "lon"), combined_ice),
             "storm_track_mask": (("season", "lat", "lon"), combined_storm),
             "positive_omega_mask": (("season", "lat", "lon"), combined_pos_omega),
+            "positive_omega_land_mask": (
+                ("season", "lat", "lon"),
+                combined_pos_omega_land,
+            ),
             "negative_omega_mask": (("season", "lat", "lon"), combined_neg_omega),
         },
         coords={
@@ -1069,6 +1316,25 @@ def build_masks_and_contributions(
                 seasonal_global_contribution_percent,
             ),
             "seasonal_global_sample_count": ("season", seasonal_global_sample_count),
+            "desert_series": (("season", "year"), desert_series),
+            "desert_trend": ("season", desert_trend),
+            "desert_ci95": ("season", desert_ci95),
+            "desert_area_fraction": ("season", desert_area_fraction),
+            "desert_contribution_trend": ("season", desert_contribution_trend),
+            "desert_contribution_percent": ("season", desert_contribution_percent),
+            "desert_sample_count": ("season", desert_sample_count),
+            "annual_desert_series": ("year", annual_desert_series),
+            "annual_desert_trend": xr.DataArray(np.float32(annual_desert_trend)),
+            "annual_desert_ci95": xr.DataArray(np.float32(annual_desert_ci95)),
+            "annual_desert_contribution_trend": xr.DataArray(
+                np.float32(annual_desert_contribution_trend)
+            ),
+            "annual_desert_contribution_percent": xr.DataArray(
+                np.float32(annual_desert_contribution_percent)
+            ),
+            "annual_desert_sample_count": xr.DataArray(
+                np.int16(annual_desert_sample_count)
+            ),
         },
         coords={
             "season": list(SEASONS),
@@ -1086,9 +1352,13 @@ def build_masks_and_contributions(
             ),
             "note": (
                 "Seasonal contribution percentages are referenced to the annual global-mean "
-                "EEI trend and include both the effective masked area fraction and the "
-                "1/4 seasonal time weighting. Annual regional contributions are aggregated "
-                "from the four seasonal contributions. Radiation trends use "
+                "EEI trend reconstructed from the weighted combination of the four "
+                "seasonal global series over their common years, so the seasonal "
+                "contribution percentages sum to "
+                "100%. Contribution trends include both the effective masked area fraction "
+                "and the season-specific day weighting derived from the monthly sample. "
+                "Annual regional contributions are aggregated from the four seasonal "
+                "contributions. Radiation trends use "
                 f"{RADIATION_TREND_START_YEAR}-{RADIATION_TREND_END_YEAR}, and DJF is "
                 "defined by December of the labeled year plus the following January-February."
             ),
@@ -1137,12 +1407,37 @@ def ensure_manuscript_outputs(force: bool = False) -> dict[str, Path]:
     needs_refresh = force or any(not path.exists() for path in outputs.values())
     if not needs_refresh:
         expected_regions = list(REGION_NAMES)
+        expected_mask_vars = {
+            "region_mask",
+            "ice_mask",
+            "storm_track_mask",
+            "positive_omega_mask",
+            "positive_omega_land_mask",
+            "negative_omega_mask",
+        }
+        expected_contribution_vars = {
+            "desert_series",
+            "desert_trend",
+            "desert_ci95",
+            "desert_area_fraction",
+            "desert_contribution_trend",
+            "desert_contribution_percent",
+            "desert_sample_count",
+            "annual_desert_series",
+            "annual_desert_trend",
+            "annual_desert_ci95",
+            "annual_desert_contribution_trend",
+            "annual_desert_contribution_percent",
+            "annual_desert_sample_count",
+        }
         try:
             contributions_ds = xr.open_dataset(CONTRIBUTIONS_OUTPUT_FILE)
             masks_ds = xr.open_dataset(MASKS_OUTPUT_FILE)
             needs_refresh = (
                 list(contributions_ds["region"].values) != expected_regions
                 or list(masks_ds["region"].values) != expected_regions
+                or not expected_mask_vars.issubset(masks_ds.data_vars)
+                or not expected_contribution_vars.issubset(contributions_ds.data_vars)
             )
             contributions_ds.close()
             masks_ds.close()

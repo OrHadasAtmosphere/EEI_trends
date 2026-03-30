@@ -48,11 +48,12 @@ def overlay_masks(ax, masks: xr.Dataset, season: str) -> None:
         ("ice_mask", "green"),
         ("storm_track_mask", "black"),
         ("positive_omega_mask", "blue"),
+        ("positive_omega_land_mask", "goldenrod"),
         ("negative_omega_mask", "red"),
     ):
         mask = masks[var_name].sel(season=season)
         lon, lat, data = wrap_global_field(mask)
-        ax.contourf(
+        ax.contour(
             lon,
             lat,
             data,
@@ -60,6 +61,7 @@ def overlay_masks(ax, masks: xr.Dataset, season: str) -> None:
             colors=[color],
             alpha=MASK_ALPHA,
             transform=ccrs.PlateCarree(),
+            linewidths=5,
         )
 
 
@@ -116,10 +118,6 @@ def main() -> None:
         pad=0.04,
         label="W m-2 decade-1",
         fraction=0.05,
-    )
-    fig.suptitle(
-        "Seasonal net EEI trend with circulation masks",
-        y=1.01,
     )
     local_path, overleaf_path = save_figure_outputs(fig, FIGURE_FILE.name, dpi=300)
     plt.close(fig)
