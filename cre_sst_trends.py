@@ -92,14 +92,6 @@ def main() -> None:
     else:
         mask_union = positive_mask
 
-    # ensure mask is on the same grid as cloud_annual for straightforward selection
-    try:
-        mask_on_cloud_grid = regrid_to_target(mask_union, cloud_annual["lat"], cloud_annual["lon"])
-    except Exception:
-        # if regridding fails, fall back to mask_union (may still work if already aligned)
-        mask_on_cloud_grid = mask_union
-        print("Warning: regridding mask to cloud grid failed — using original mask (may mismatch coords)")
-
     for i, (name, lat_min, lat_max, lon_min, lon_max, color) in enumerate(BOX_REGIONS):
         # align sst/cloud to ensure matching coords
         # SST annual trend data
@@ -131,13 +123,8 @@ def main() -> None:
         sst_sel = sst_a.isel(lon=lon_idx, lat=lat_idx)
         cloud_sel = cloud_a.isel(lon=lon_idx, lat=lat_idx)
 
-        # also extract mask values for these gridpoints (mask is on cloud grid)
-        try:
-            mask_sel = mask_on_cloud_grid.isel(lon=lon_idx, lat=lat_idx)
-            mask_vals = np.asarray(mask_sel.values).ravel()
-        except Exception:
-            # if mask indexing fails, treat as no mask (all True)
-            mask_vals = np.ones_like(np.asarray(sst_sel.values).ravel(), dtype=bool)
+        mask_sel = mask_union.isel(lon=lon_idx, lat=lat_idx)
+        mask_vals = np.asarray(mask_sel.values).ravel()
         
         if sst_sel.size == 0 or cloud_sel.size == 0:
             print(f"{name} lat-lon box returned no gridpoints (sst_sel.size={sst_sel.size}, cloud_sel.size={cloud_sel.size})")
