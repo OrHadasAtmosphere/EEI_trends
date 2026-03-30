@@ -52,7 +52,7 @@ def format_cell(
     trend_text = f"{trend_decade:.2f}"
     if abs(trend) > ci95:
         trend_text = rf"\mathbf{{{trend_text}}}"
-    return f"${trend_text}\\;({contribution_percent:.1f}\\%)$"
+    return f"${trend_text}\\;({contribution_percent:.0f}\\%)$"
 
 
 def format_region_label(ds: xr.Dataset, region: str) -> str:
@@ -60,11 +60,6 @@ def format_region_label(ds: xr.Dataset, region: str) -> str:
         float(ds["seasonal_area_fraction"].sel(region=region).mean("season")) * 100.0
     )
     return f"{region} ({mean_seasonal_area_percent:.0f}\\%)"
-
-
-def format_mask_label(ds: xr.Dataset, name: str, area_var: str) -> str:
-    mean_seasonal_area_percent = float(ds[area_var].mean("season")) * 100.0
-    return f"{name} ({mean_seasonal_area_percent:.0f}\\%)"
 
 
 def main() -> None:
@@ -75,7 +70,7 @@ def main() -> None:
     lines = [
         "\\begin{tabular}{llllll}",
         "\\hline",
-        "Region (mean seasonal area) & Annual & DJF & MAM & JJA & SON \\\\",
+        "Region (area) & Annual & DJF & MAM & JJA & SON \\\\",
         "\\hline",
     ]
     regions = ds["region"].values
@@ -119,7 +114,7 @@ def main() -> None:
         for season in SEASONS
     ]
     overall_cells = " & ".join([overall_annual, *overall_seasonal])
-    lines.append(f"Overall & {overall_cells} \\\\")
+    lines.append(f"Global-mean & {overall_cells} \\\\")
     lines.append("\\hline")
     lines.append("\\end{tabular}")
     latex = "\n".join(lines)
