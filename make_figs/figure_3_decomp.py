@@ -20,7 +20,8 @@ def eei_maps(da, savefile):
             plot_coasts_grid(ax)
             ax.set_title(letter[i,j]+") "+varj+vari+f" = {trend_gm:0.2f}", position=(0.35, 1.0))
     
-    plot_colorbar(fig, cf, "EEI Trend / W m$^{-2}$ dec$^{-1}$", [0.25, -0.05, 0.5, 0.02])
+    cbar_ax = fig.add_axes([0.25, -0.05, 0.5, 0.02])
+    cbar=fig.colorbar(cf, cax=cbar_ax, orientation='horizontal', label="EEI Trend / W m$^{-2}$ dec$^{-1}$", extend="both", ticks = np.linspace(-cr,cr,5))
     plt.savefig("figures/"+savefile, dpi=300, facecolor="w", bbox_inches="tight")
 
 

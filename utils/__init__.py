@@ -1,4 +1,5 @@
 import numpy as np
+import xarray as xr
 from scipy import stats
 
 def add_weights(ds):
