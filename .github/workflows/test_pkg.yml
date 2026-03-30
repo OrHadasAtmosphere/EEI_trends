@@ -1,5 +1,5 @@
-name: Test environment.yaml
-on: [push, pull_request]
+name: environment and package setup
+on: [push]
 
 jobs:
   test:
@@ -18,8 +18,7 @@ jobs:
           environment-file: environment.yaml
           cache-environment: true
 
-      - name: test environment
+      - name: install package
         shell: bash -l {0}
         run: |
-          python -c "import xarray; print('xarray version:', xarray.__version__)"
-          # TODO - add more tests
+          pip install .

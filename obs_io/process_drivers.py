@@ -1,6 +1,6 @@
 import numpy as np
 import xarray as xr
-from calc_EIS import calc_EIS
+from utils.calc_EIS import calc_EIS
 
 def add_weights(ds):
     weights = ds.time.dt.days_in_month
