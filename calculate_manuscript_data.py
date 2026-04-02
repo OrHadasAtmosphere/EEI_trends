@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 
 import numpy as np
+from scipy.ndimage import gaussian_filter
 import scipy.stats as stats
 import xarray as xr
 
@@ -58,8 +59,8 @@ REGION_NAMES = (
     "Remaider",
 )
 
-STORM_TRACK_NH_FACTOR = 0.3
-STORM_TRACK_SH_FACTOR = 0.4
+STORM_TRACK_NH_FACTOR = 0.4
+STORM_TRACK_SH_FACTOR = 0.5
 OMEGA_POS_FACTOR = 0.05
 OMEGA_NEG_FACTOR = 0.05
 ICE_FACTOR = 0.1
@@ -67,6 +68,7 @@ OMEGA_LATITUDE_LIMIT = 40.0
 RADIATION_TREND_START_YEAR = 2001
 RADIATION_TREND_END_YEAR = 2024
 POLAR_LATITUDE_LIMIT = 60.0
+SLP_SMOOTHING_SIGMA = 5.0
 
 
 def ensure_required_variables(ds: xr.Dataset, required: set[str], context: str) -> None:
@@ -603,48 +605,18 @@ def build_ceres_dataset(input_file: Path = CERES_INPUT_FILE) -> xr.Dataset:
             "shortwave minus global-mean outgoing longwave."
         ),
     )
-    seasonal_global_eei = {
-        season: seasonal_means(
-            global_eei,
-            season,
-            year_bounds=radiation_year_bounds,
-            djf_mode="december_year",
-            time_weights=time_weights,
-        )
-        for season in SEASONS
-    }
-    common_years = seasonal_global_eei["DJF"]["year"].values.astype(np.int32)
-    for season in SEASONS[1:]:
-        common_years = np.intersect1d(
-            common_years,
-            seasonal_global_eei[season]["year"].values.astype(np.int32),
-        )
-    season_weights = seasonal_time_fractions(
-        global_eei["time"], common_years, djf_mode="december_year"
-    )
-    annual_global_eei = xr.DataArray(
-        np.tensordot(
-            season_weights.values.astype(np.float64),
-            np.stack(
-                [
-                    seasonal_global_eei[season].sel(year=common_years).values
-                    for season in SEASONS
-                ],
-                axis=0,
-            ),
-            axes=(0, 0),
-        ),
-        coords={"year": common_years},
-        dims=("year",),
-        name="all_sky_global_net_annual_mean",
+    annual_global_eei = annual_means(
+        global_eei,
+        year_bounds=radiation_year_bounds,
+        time_weights=time_weights,
     ).astype(np.float32)
     annual_global_eei.name = "all_sky_global_net_annual_mean"
     annual_global_eei.attrs.update(
         long_name="Annual global-mean all-sky EEI",
         units="W m-2",
         description=(
-            "Reconstructed from day-weighted seasonal global means using the same "
-            "season-year labeling as the DJF diagnostics."
+            "Computed directly from the day-weighted annual mean of the monthly "
+            "global-mean all-sky EEI series."
         ),
     )
     # fit trend and 95% confidence interval for the annual global series
@@ -692,8 +664,8 @@ def build_ceres_dataset(input_file: Path = CERES_INPUT_FILE) -> xr.Dataset:
             "December of the labeled year with January-February of the following year."
         ),
         annual_global_definition=(
-            "Annual global means are reconstructed from weighted MAM, JJA, SON, and "
-            "DJF means sharing the same labeled year."
+            "Annual global means are computed directly from day-weighted January-"
+            "through-December monthly global means for each calendar year."
         ),
         note=(
             "Net EEI is computed as incoming shortwave minus outgoing shortwave minus "
@@ -821,6 +793,22 @@ def regrid_to_target(
     )
 
 
+def gaussian_smooth_latlon(da: xr.DataArray, sigma: float) -> xr.DataArray:
+    if sigma <= 0:
+        return da
+
+    return xr.apply_ufunc(
+        gaussian_filter,
+        da,
+        input_core_dims=[["lat", "lon"]],
+        output_core_dims=[["lat", "lon"]],
+        kwargs={"sigma": sigma, "mode": ("nearest", "wrap")},
+        vectorize=True,
+        dask="parallelized",
+        output_dtypes=[da.dtype],
+    )
+
+
 def load_mask_drivers() -> tuple[xr.DataArray, xr.DataArray, xr.DataArray]:
     omega_ds = xr.open_dataset(OMEGA_FILE)
     omega_seasonal = (
@@ -837,6 +825,8 @@ def load_mask_drivers() -> tuple[xr.DataArray, xr.DataArray, xr.DataArray]:
     else:
         var = STORM_MATRICS
     slp_monthly = xr.open_dataset(STORM_FILE)[var].mean("year").sortby("lat")
+    if var == "SLP_var":
+        slp_monthly = gaussian_smooth_latlon(slp_monthly, SLP_SMOOTHING_SIGMA)
     slp_fields = [slp_monthly.mean("month", skipna=True).expand_dims(period=["annual"])]
     for season in SEASONS:
         seasonal_mean = slp_monthly.sel(month=SEASON_MONTHS[season]).mean(
@@ -890,8 +880,8 @@ def build_region_masks(
     nh_ice = (lat2d > 0) & ice_mask
     sh_ice = ((lat2d < 0) & ice_mask) | (land_mask & (lat2d < -60))
 
-    nh_storm = (lat2d > 0) & (~ice_mask) & (slp >= slp_nh_limit)
-    sh_storm = (lat2d < 0) & (~ice_mask) & (slp >= slp_sh_limit)
+    nh_storm = (lat2d > 25) & (~ice_mask) & (slp >= slp_nh_limit)
+    sh_storm = (lat2d < -25) & (~ice_mask) & (slp >= slp_sh_limit)
     storm_track = nh_storm | sh_storm
     equatorward = np.abs(lat2d) < OMEGA_LATITUDE_LIMIT
 

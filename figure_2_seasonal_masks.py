@@ -21,11 +21,11 @@ from calculate_manuscript_data import (
     ensure_manuscript_outputs,
     CENTRAL_LONGITUDE,
 )
-from map_plot_utils import wrap_global_field
+from map_plot_utils import add_colorbar, wrap_global_field
 
 
 FIGURE_FILE = FIGURES_DIR / "figure_2_seasonal_masks.png"
-MASK_ALPHA = 0.25
+MASK_ALPHA = 0.1
 
 
 def seasonal_trend_levels(
@@ -59,9 +59,9 @@ def overlay_masks(ax, masks: xr.Dataset, season: str) -> None:
             data,
             levels=[0.5, 1.5],
             colors=[color],
-            alpha=MASK_ALPHA,
+            alpha=1,
             transform=ccrs.PlateCarree(),
-            linewidths=5,
+            linewidths=2,
         )
 
 
@@ -82,7 +82,7 @@ def main() -> None:
     fig, axes = plt.subplots(
         2,
         2,
-        figsize=(14, 8),
+        figsize=(10, 7),
         constrained_layout=True,
         subplot_kw={
             "projection": ccrs.Robinson(
@@ -111,13 +111,14 @@ def main() -> None:
         start_year, end_year = period_years[season]
         ax.set_title(f"({panel}) {season} ({start_year}-{end_year})")
 
-    fig.colorbar(
+    add_colorbar(
+        fig,
         contour,
         ax=axes,
         orientation="horizontal",
         pad=0.04,
+        thickness=0.05,
         label="W m-2 decade-1",
-        fraction=0.05,
     )
     local_path, overleaf_path = save_figure_outputs(fig, FIGURE_FILE.name, dpi=300)
     plt.close(fig)
