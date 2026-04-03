@@ -1,6 +1,6 @@
 # EEI_trends
 
-![CI](https://github.com/OrHadasAtmosphere/EEI_trends/actions/workflows/test_env.yml/badge.svg)
+![CI](https://github.com/OrHadasAtmosphere/EEI_trends/actions/workflows/test_ci.yml/badge.svg)
 
 This repository contains scripts to perform analyses and generate figures ... todo
 
