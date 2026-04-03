@@ -16,7 +16,7 @@ season_def = {
 }
 
 # read ceres
-ds = xr.open_mfdataset(["CERES_EBAF-TOA_Ed4.2.1_Subset_200003-202601.nc"])
+ds = xr.open_mfdataset(["raw_data/CERES_EBAF-TOA_Ed4.2.1_Subset_200003-202601.nc"])
 ds["net"] = ds.toa_net_all_mon
 ds["net_clr"] = ds.toa_net_clr_c_mon
 ds["lw"] = -ds.toa_lw_all_mon
@@ -42,7 +42,7 @@ for seas in season_def.keys():
     sub_mean = sub_mean.expand_dims(season=[seas])
     all.append(sub_mean)
 ds = xr.concat(all, dim="season")
-ds.to_netcdf("ceres_timeseries.nc")
+ds.to_netcdf("output/ceres_timeseries.nc")
 
 # calculate trends
 ds_trend = ds.polyfit("year",1).sel(degree=1).drop_vars(["degree","days_in_month_polyfit_coefficients"])*10
@@ -50,4 +50,4 @@ ds_trend = ds_trend.rename({
     v: v.replace("_polyfit_coefficients", "")
     for v in ds_trend.data_vars
 })
-ds_trend.to_netcdf("ceres_trends.nc")
+ds_trend.to_netcdf("output/ceres_trends.nc")
