@@ -119,7 +119,6 @@ class TestManuscriptClosure(unittest.TestCase):
         np.testing.assert_allclose(
             float(
                 self.contributions["annual_contribution_percent"].sum("region")
-                + self.contributions["annual_desert_contribution_percent"]
             ),
             100.0,
             atol=CONTRIBUTION_ATOL,
@@ -132,6 +131,13 @@ class TestManuscriptClosure(unittest.TestCase):
             atol=CONTRIBUTION_ATOL,
         )
 
+
+"""""
+1. All grid points are assigned to exactly one region. No tolerence.
+2. The sum of areas of all masks is about the area of Earth. Up to 1% accuracy.
+3. Each season sums up to the global contribution. No tolerence.
+4. The total contribution of the seasons sums up to the annual contribution. No tolerence.
+"""""
 
 if __name__ == "__main__":
     unittest.main()

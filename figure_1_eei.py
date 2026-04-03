@@ -20,7 +20,7 @@ from calculate_manuscript_data import (
     save_figure_outputs,
     ensure_manuscript_outputs,
 )
-from map_plot_utils import wrap_global_field
+from map_plot_utils import GLOBAL_FONT_SIZE, add_colorbar, wrap_global_field
 
 
 FIGURE_FILE = FIGURES_DIR / "figure_1_eei.png"
@@ -49,13 +49,13 @@ def add_latitude_lines(ax, c_lon) -> None:
 
     for latitude in LATITUDE_LINES:
         ax.text(
-            -314.99,
+            CENTRAL_LONGITUDE - 39.9,
             float(latitude),
             format_latitude_label(float(latitude)),
             transform=ccrs.PlateCarree(central_longitude=c_lon),
             ha="right",
             va="center",
-            fontsize=6,
+            fontsize=GLOBAL_FONT_SIZE,
             color="0.25",
             clip_on=False,
         )
@@ -134,7 +134,8 @@ def main() -> None:
         f"(b) EEI trend ({start_year}-{end_year})",
     )
 
-    fig.colorbar(
+    add_colorbar(
+        fig,
         trend_plot,
         ax=axes[1],
         orientation="horizontal",
