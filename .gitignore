@@ -1,0 +1,4 @@
+__pycache__/
+.cache
+.matplotlib
+ceres-data/*.nc
