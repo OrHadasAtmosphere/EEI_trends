@@ -3,7 +3,7 @@ from __future__ import annotations
 from calculate_manuscript_data import main as calculate_main
 from figure_1_eei import main as figure_1_main
 from figure_2_seasonal_masks import main as figure_2_main
-from figure_3_drivers import main as figure_3_main
+from figure_3_drivers import main_sst_water_vapour as figure_3_main
 from figure_4_slp_dynamics import main as figure_4_main
 from table_1_contributions import main as table_1_main
 

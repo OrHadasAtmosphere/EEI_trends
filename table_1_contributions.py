@@ -13,6 +13,8 @@ from calculate_manuscript_data import (
     ensure_manuscript_outputs,
 )
 
+OREDER = [-2, -4, -3, 2, 3, 0, 1, -1]
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
@@ -50,7 +52,14 @@ def format_cell(
     trend_text = f"{trend_decade:.2f}"
     if abs(trend) > ci95:
         trend_text = rf"\mathbf{{{trend_text}}}"
-    return f"${trend_text}\\;({contribution_percent:.1f}\\%)$"
+    return f"${trend_text}\\;({contribution_percent:.0f}\\%)$"
+
+
+def format_region_label(ds: xr.Dataset, region: str) -> str:
+    mean_seasonal_area_percent = (
+        float(ds["seasonal_area_fraction"].sel(region=region).mean("season")) * 100.0
+    )
+    return f"{region} ({mean_seasonal_area_percent:.0f}\\%)"
 
 
 def main() -> None:
@@ -59,12 +68,14 @@ def main() -> None:
     ds = xr.open_dataset(CONTRIBUTIONS_OUTPUT_FILE)
 
     lines = [
-        "\\begin{tabular}{lccccc}",
+        "\\begin{tabular}{llllll}",
         "\\hline",
-        "Region & Annual & DJF & MAM & JJA & SON \\\\",
+        "Region (area) & Annual & DJF & MAM & JJA & SON \\\\",
         "\\hline",
     ]
-    for region in ds["region"].values:
+    regions = ds["region"].values
+    for o in OREDER:
+        region = regions[o]
         annual_cell = format_cell(
             float(ds["annual_region_trend"].sel(region=region)),
             float(ds["annual_region_ci95"].sel(region=region)),
@@ -86,7 +97,7 @@ def main() -> None:
             for season in SEASONS
         ]
         cells = " & ".join([annual_cell, *seasonal_cells])
-        lines.append(f"{region} & {cells} \\\\")
+        lines.append(f"{format_region_label(ds, region)} & {cells} \\\\")
     overall_annual = format_cell(
         float(ds["annual_global_trend"]),
         float(ds["annual_global_ci95"]),
@@ -103,7 +114,7 @@ def main() -> None:
         for season in SEASONS
     ]
     overall_cells = " & ".join([overall_annual, *overall_seasonal])
-    lines.append(f"Overall & {overall_cells} \\\\")
+    lines.append(f"Global-mean & {overall_cells} \\\\")
     lines.append("\\hline")
     lines.append("\\end{tabular}")
     latex = "\n".join(lines)

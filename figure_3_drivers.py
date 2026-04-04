@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import sys
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 os.environ.setdefault("MPLCONFIGDIR", str(SCRIPT_DIR / ".matplotlib"))
@@ -18,12 +19,17 @@ from calculate_manuscript_data import (
     SST_OUTPUT_FILE,
     save_figure_outputs,
     ensure_manuscript_outputs,
+    CENTRAL_LONGITUDE,
 )
-from map_plot_utils import wrap_global_field
-from water_vapour import INPUT_FILE as WV_INPUT_FILE, annual_mean_trend as annual_wv_trend
+from map_plot_utils import GLOBAL_FONT_SIZE, add_colorbar, wrap_global_field
+from water_vapour import (
+    INPUT_FILE as WV_INPUT_FILE,
+    annual_mean_trend as annual_wv_trend,
+)
 
 
 FIGURE_FILE = FIGURES_DIR / "figure_3_drivers.png"
+SST_WV_FIGURE_FILE = FIGURES_DIR / "figure_3_sst_water_vapour.png"
 
 
 def map_panel(ax, field: xr.DataArray, levels: np.ndarray, cmap: str, title: str):
@@ -45,21 +51,24 @@ def map_panel(ax, field: xr.DataArray, levels: np.ndarray, cmap: str, title: str
 
 def blank_panel(ax, title: str, message: str) -> None:
     ax.set_title(title)
-    ax.text(0.5, 0.5, message, ha="center", va="center", transform=ax.transAxes, fontsize=12)
+    ax.text(
+        0.5,
+        0.5,
+        message,
+        ha="center",
+        va="center",
+        transform=ax.transAxes,
+        fontsize=GLOBAL_FONT_SIZE,
+    )
     ax.set_axis_off()
 
 
-def humidity_levels(field: xr.DataArray) -> np.ndarray:
-    valid_values = np.abs(field.values[np.isfinite(field.values)])
-    if valid_values.size:
-        vmax = float(np.nanpercentile(valid_values, 98))
-        if not np.isfinite(vmax) or np.isclose(vmax, 0.0):
-            vmax = float(np.nanmax(valid_values))
-    else:
-        vmax = 1.0
-    if not np.isfinite(vmax) or np.isclose(vmax, 0.0):
-        vmax = 1.0
-    return np.linspace(-vmax, vmax, 21)
+def load_humidity_trend() -> xr.DataArray | None:
+    if not WV_INPUT_FILE.exists():
+        return None
+
+    humidity_trend, _ = annual_wv_trend(WV_INPUT_FILE)
+    return humidity_trend * 10.0
 
 
 def main() -> None:
@@ -73,11 +82,16 @@ def main() -> None:
         2,
         figsize=(14, 8),
         constrained_layout=True,
-        subplot_kw={"projection": ccrs.Robinson(central_longitude=60)},
+        subplot_kw={
+            "projection": ccrs.Robinson(
+                central_longitude=CENTRAL_LONGITUDE,
+            )
+        },
     )
 
-    flux_levels = np.linspace(-7.0, 7.0, 21)
-    sst_levels = np.linspace(-1.2, 1.2, 21)
+    flux_levels = np.linspace(-7.0, 7.0, 15)
+    sst_levels = np.linspace(-1.2, 1.2, 13)
+    humidity_levels = np.linspace(-2, 2, 9)
 
     cloud_plot = map_panel(
         axes[0, 0],
@@ -101,13 +115,12 @@ def main() -> None:
         "(c) SST trend",
     )
     humidity_plot = None
-    if WV_INPUT_FILE.exists():
-        humidity_trend, _ = annual_wv_trend(WV_INPUT_FILE)
-        humidity_trend = humidity_trend * 10.0
+    humidity_trend = load_humidity_trend()
+    if humidity_trend is not None:
         humidity_plot = map_panel(
             axes[1, 1],
             humidity_trend,
-            humidity_levels(humidity_trend),
+            humidity_levels,
             "BrBG",
             "(d) Total column water vapour trend",
         )
@@ -118,15 +131,36 @@ def main() -> None:
             f"Missing input data:\n{WV_INPUT_FILE.name}",
         )
 
-    fig.colorbar(cloud_plot, ax=[axes[0, 0], axes[0, 1]], orientation="horizontal", pad=0.05, label="W m-2 decade-1")
-    fig.colorbar(sst_plot, ax=axes[1, 0], orientation="horizontal", pad=0.05, label="K decade-1")
+    add_colorbar(
+        fig,
+        cloud_plot,
+        ax=[axes[0, 0], axes[0, 1]],
+        orientation="horizontal",
+        pad=0.05,
+        thickness=0.08,
+        aspect=50,
+        label="W m-2 decade-1",
+    )
+    add_colorbar(
+        fig,
+        sst_plot,
+        ax=axes[1, 0],
+        orientation="horizontal",
+        pad=0.05,
+        label="K decade-1",
+        aspect=25,
+        thickness=0.08,
+    )
     if humidity_plot is not None:
-        fig.colorbar(
+        add_colorbar(
+            fig,
             humidity_plot,
             ax=axes[1, 1],
             orientation="horizontal",
             pad=0.05,
             label="kg m-2 decade-1",
+            aspect=25,
+            thickness=0.08,
         )
     local_path, overleaf_path = save_figure_outputs(fig, FIGURE_FILE.name, dpi=300)
     plt.close(fig)
@@ -134,5 +168,82 @@ def main() -> None:
     print(overleaf_path)
 
 
+def main_sst_water_vapour() -> None:
+    ensure_manuscript_outputs(force=False)
+    sst = xr.open_dataset(SST_OUTPUT_FILE)
+    humidity_trend = load_humidity_trend()
+
+    FIGURES_DIR.mkdir(parents=True, exist_ok=True)
+    fig, axes = plt.subplots(
+        1,
+        2,
+        figsize=(10, 3.8),
+        constrained_layout=True,
+        subplot_kw={
+            "projection": ccrs.Robinson(
+                central_longitude=CENTRAL_LONGITUDE,
+            )
+        },
+    )
+
+    sst_levels = np.linspace(-1.2, 1.2, 13)
+    humidity_levels = np.linspace(-2, 2, 9)
+
+    sst_plot = map_panel(
+        axes[0],
+        sst["annual_sst_trend"] * 10.0,
+        sst_levels,
+        "coolwarm",
+        "(a) SST trend",
+    )
+    humidity_plot = None
+    if humidity_trend is not None:
+        humidity_plot = map_panel(
+            axes[1],
+            humidity_trend,
+            humidity_levels,
+            "BrBG",
+            "(b) Total column water vapour trend",
+        )
+    else:
+        blank_panel(
+            axes[1],
+            "(b) Total column water vapour trend",
+            f"Missing input data:\n{WV_INPUT_FILE.name}",
+        )
+
+    add_colorbar(
+        fig,
+        sst_plot,
+        ax=axes[0],
+        orientation="horizontal",
+        pad=0.08,
+        label="K decade-1",
+        aspect=25,
+        thickness=0.08,
+    )
+    if humidity_plot is not None:
+        add_colorbar(
+            fig,
+            humidity_plot,
+            ax=axes[1],
+            orientation="horizontal",
+            pad=0.08,
+            label="kg m-2 decade-1",
+            aspect=25,
+            thickness=0.08,
+        )
+
+    local_path, overleaf_path = save_figure_outputs(
+        fig, SST_WV_FIGURE_FILE.name, dpi=300
+    )
+    plt.close(fig)
+    print(local_path)
+    print(overleaf_path)
+
+
 if __name__ == "__main__":
-    main()
+    if True:  # len(sys.argv) > 1 and sys.argv[1] in {"sst_wv", "sst_water_vapour"}:
+        main_sst_water_vapour()
+    else:
+        main()
