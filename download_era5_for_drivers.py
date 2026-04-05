@@ -10,7 +10,8 @@ request = {
         "sea_surface_temperature",
         "skin_temperature",
         "10m_wind_speed",
-        "total_column_water"
+        "total_column_water",
+        "sea_ice_cover",
     ],
     "year": [
         "2000", "2001", "2002",
@@ -84,7 +85,8 @@ request = {
         "sea_surface_temperature",
         "skin_temperature",
         "10m_wind_speed",
-        "total_column_water"
+        "total_column_water",
+        "sea_ice_cover",
     ],
     "year": [
         "2026",
