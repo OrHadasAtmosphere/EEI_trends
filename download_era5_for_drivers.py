@@ -21,7 +21,7 @@ request = {
         "2015", "2016", "2017",
         "2018", "2019", "2020",
         "2021", "2022", "2023",
-        "2024", "2025", "2026"
+        "2024", "2025",
     ],
     "month": [
         "01", "02", "03",
@@ -36,7 +36,7 @@ request = {
 }
 
 client = cdsapi.Client()
-client.retrieve(dataset, request, target).download()
+client.retrieve(dataset, request, target)
 
 #############
 
@@ -55,7 +55,7 @@ request = {
         "2015", "2016", "2017",
         "2018", "2019", "2020",
         "2021", "2022", "2023",
-        "2024", "2025", "2026"
+        "2024", "2025",
     ],
     "month": [
         "01", "02", "03",
@@ -70,4 +70,4 @@ request = {
 }
 
 client = cdsapi.Client()
-client.retrieve(dataset, request, target).download()
+client.retrieve(dataset, request, target)
