@@ -1,3 +1,6 @@
 raw_data/
 __pycache__/
 .ipynb_checkpoints/
+.cache
+.matplotlib
+ceres-data/*.nc
