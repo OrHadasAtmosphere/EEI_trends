@@ -29,7 +29,7 @@ def eei_maps(da, savefile):
 
 
 
-ds_trend = xr.open_mfdataset(["output/ceres_trends.nc"])
+ds_trend = xr.open_mfdataset(["pp/ceres_trends.nc"])
 da = ds_trend.sel(season="ANN").load()
 eei_maps(da, savefile="eei_trend_maps.png")
 
