@@ -71,3 +71,56 @@ request = {
 
 client = cdsapi.Client()
 client.retrieve(dataset, request, target)
+
+###
+
+target = "raw_data/drivers_levels_2026.nc"
+dataset = "reanalysis-era5-single-levels-monthly-means"
+request = {
+    "product_type": ["monthly_averaged_reanalysis"],
+    "variable": [
+        "2m_temperature",
+        "surface_pressure",
+        "sea_surface_temperature",
+        "skin_temperature",
+        "10m_wind_speed",
+        "total_column_water"
+    ],
+    "year": [
+        "2026",
+    ],
+    "month": [
+        "01", "02", "03",
+    ],
+    "time": ["00:00"],
+    "data_format": "netcdf",
+    "download_format": "unarchived",
+    "grid": [1, 1],
+}
+
+client = cdsapi.Client()
+client.retrieve(dataset, request, target)
+
+#############
+
+target = "raw_data/drivers_pressures_2026.nc"
+dataset = "reanalysis-era5-pressure-levels-monthly-means"
+request = {
+    "product_type": ["monthly_averaged_reanalysis"],
+    "variable": ["temperature"],
+    "pressure_level": ["700", "850"],
+    "year": [
+        "2026",
+    ],
+    "month": [
+        "01", "02", "03",
+    ],
+    "time": ["00:00"],
+    "data_format": "netcdf",
+    "download_format": "unarchived",
+    "grid": [1, 1],
+}
+
+client = cdsapi.Client()
+client.retrieve(dataset, request, target)
+
