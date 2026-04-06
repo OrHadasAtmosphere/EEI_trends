@@ -1,12 +1,7 @@
 import numpy as np
 import xarray as xr
 from utils.calc_EIS import calc_EIS
-
-def add_weights(ds):
-    weights = ds.time.dt.days_in_month
-    weights = weights.where(weights.time.dt.month!=2, 28.65)
-    ds["days_in_month"] = weights
-    return ds
+from utils import add_weights
 
 season_def = {
     "ANN":np.arange(12)+1,

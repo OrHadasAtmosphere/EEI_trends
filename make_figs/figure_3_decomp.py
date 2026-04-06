@@ -3,8 +3,8 @@ import xarray as xr
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 
-def lat_mean(ds):
-    return ds.weighted(np.cos(np.deg2rad(ds.lat))).mean("lat")
+from utils import global_mean
+from utils.plotting import plot_colormesh, plot_coasts_grid, plot_colorbar
 
 def eei_maps(da, savefile):
     fig,axes = plt.subplots(2, 3, figsize=(14,6), subplot_kw={"projection":ccrs.Robinson(central_longitude=-135)}, constrained_layout=True)
@@ -12,19 +12,15 @@ def eei_maps(da, savefile):
     for i,vari in enumerate(["_clr","_cre"]):
         for j,varj in enumerate(["net","lw","sw"]):
             ax = axes[i,j]
-            cr = 5
     
             t = da[varj+vari]
-            trend_gm = lat_mean(t.mean("lon")).values
-            cf = ax.pcolormesh(da.lon, da.lat, t, vmin=-cr, vmax=cr,
-                        cmap="bwr", transform=ccrs.PlateCarree())
+            trend_gm = global_mean(t).values
+            cf = plot_colormesh(ax, t)
     
-            ax.coastlines(lw=0.5)
-            ax.gridlines(draw_labels=False, linewidth=0.5, color='gray', linestyle=':')
+            plot_coasts_grid(ax)
             ax.set_title(letter[i,j]+") "+varj+vari+f" = {trend_gm:0.2f}", position=(0.35, 1.0))
     
-    cbar_ax = fig.add_axes([0.25, -0.05, 0.5, 0.02])
-    cbar=fig.colorbar(cf, cax=cbar_ax, orientation='horizontal', label="EEI Trend / W m$^{-2}$ dec$^{-1}$", extend="both", ticks = np.linspace(-cr,cr,5))
+    plot_colorbar(fig, cf, "EEI Trend / W m$^{-2}$ dec$^{-1}$", [0.25, -0.05, 0.5, 0.02])
     plt.savefig("figures/"+savefile, dpi=300, facecolor="w", bbox_inches="tight")
 
 
