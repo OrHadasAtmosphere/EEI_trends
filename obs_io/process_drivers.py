@@ -11,8 +11,10 @@ season_def = {
     "DJF":[12,1,2],
 }
 
+inputs = "raw_data/"
+
 # read era5 drivers
-ds = xr.open_mfdataset(["raw_data/drivers_levels.nc", "raw_data/drivers_pressures.nc"]) # "raw_data/drivers_levels_2026.nc", "raw_data/drivers_pressures_2026.nc"])
+ds = xr.open_mfdataset([inputs+"drivers_levels.nc", inputs+"drivers_pressures.nc", inputs+"drivers_levels_2026.nc", inputs+"drivers_pressures_2026.nc"])
 ds["T700"] = ds.sel(pressure_level=700).t
 ds["T850"] = ds.sel(pressure_level=850).t
 ds = ds.rename({"valid_time":"time","latitude":"lat","longitude":"lon"})
@@ -20,7 +22,7 @@ ds["EIS"] = calc_EIS(ds.t2m, ds.sp, ds.T700, ds.T850)
 ds = ds.drop_vars(["t","pressure_level","number","expver","T700","T850","sp"])
 
 # proper years and weighting
-ds = ds.sel(time=slice("2000-03-01", "2025-03-01"))
+ds = ds.sel(time=slice("2000-03-01", "2025-03-01")) # "2026-03-01"
 ds = add_weights(ds)
 year_adj = ds.time.dt.year - (ds.time.dt.month == 1) - (ds.time.dt.month == 2) # define year Mar-Feb
 ds = ds.assign_coords(year=year_adj)
