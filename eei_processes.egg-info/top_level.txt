@@ -1,3 +1,0 @@
-make_figs
-obs_io
-utils
