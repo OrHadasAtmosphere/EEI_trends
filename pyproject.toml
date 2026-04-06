@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=42"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "eei-processes"
+version = "0.1.0"
+description = "figures and analysis of the global EEI trend with a process-based framework"
+requires-python = "==3.14.3"
+dependencies = [
+    "cf-xarray==0.10.11",
+    "matplotlib==3.10.8",
+    "numpy==2.4.3",
+    "requests==2.33.1",
+    "xarray==2026.2.0",
+    "pandas==3.0.2",
+    "dask==2026.3.0",
+    "cartopy==0.25.0",
+    "cdsapi==0.7.7",
+    "scipy==1.17.1",
+    "netcdf4==1.7.4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==9.0.2",
+]
+
+[tool.setuptools]
+packages = ["obs_io", "make_figs", "utils"]

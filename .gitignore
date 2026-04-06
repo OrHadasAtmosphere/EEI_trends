@@ -1,6 +1,6 @@
-raw_data/
+raw_data/*.nc
 __pycache__/
 .ipynb_checkpoints/
 .cache
 .matplotlib
-ceres-data/*.nc
+*/__pycache__
