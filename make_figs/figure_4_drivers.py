@@ -22,12 +22,12 @@ ax_a = fig.add_subplot(2, 3, 1, projection=proj)
 ax_b = fig.add_subplot(2, 3, 2, projection=proj)
 ax_c = fig.add_subplot(2, 3, 3, projection=proj)
 
-sst_lim = 1.2
-wv_lim = 2.0
+sst_lim = 1.
+wv_lim = 3.
 sic_lim = 0.15
 
 sst_plt = plot_colormesh(ax_a, drivers_trends.sel(season='ANN').sst, lim=sst_lim, mask_and_val=(land_sea_mask, 0))
-wv_plt = plot_colormesh(ax_b, drivers_trends.sel(season='ANN').tcw, lim=wv_lim, mask_and_val=(land_sea_mask, 0))
+wv_plt = plot_colormesh(ax_b, drivers_trends.sel(season='ANN').tcw, lim=wv_lim)
 sic_plt = plot_colormesh(ax_c, drivers_trends.sel(season='ANN').siconc, lim=sic_lim, mask_and_val=(land_sea_mask, 0))
 
 plot_coasts_grid(ax_a)
