@@ -7,6 +7,12 @@ def add_weights(ds):
     ds["days_in_month"] = weights
     return ds
 
+def lat_mean(ds):
+    return ds.weighted(np.cos(np.deg2rad(ds.lat))).mean("lat")
+
+def global_mean(da):
+    return lat_mean(da.mean("lon"))
+
 season_def = {
     "ANN":np.arange(12)+1,
     "MAM":[3,4,5],
@@ -16,7 +22,7 @@ season_def = {
 }
 
 # read ceres
-ds = xr.open_mfdataset(["raw_data/CERES_EBAF-TOA_Ed4.2.1_Subset_200003-202601.nc"])
+ds = xr.open_mfdataset(["raw_data/CERES_EBAF-TOA_Edition4.2.1_200003-202601.nc"])
 ds["net"] = ds.toa_net_all_mon
 ds["net_clr"] = ds.toa_net_clr_c_mon
 ds["lw"] = -ds.toa_lw_all_mon
@@ -42,7 +48,10 @@ for seas in season_def.keys():
     sub_mean = sub_mean.expand_dims(season=[seas])
     all.append(sub_mean)
 ds = xr.concat(all, dim="season")
-ds.to_netcdf("pp/ceres_timeseries.nc")
+
+ds = global_mean(ds)
+
+ds.to_netcdf("pp/ceres_gm_timeseries.nc")
 
 # calculate trends
 ds_trend = ds.polyfit("year",1).sel(degree=1).drop_vars(["degree","days_in_month_polyfit_coefficients"])*10
