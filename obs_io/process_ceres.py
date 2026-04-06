@@ -1,17 +1,7 @@
 import numpy as np
 import xarray as xr
 
-def add_weights(ds):
-    weights = ds.time.dt.days_in_month
-    weights = weights.where(weights.time.dt.month!=2, 28.65)
-    ds["days_in_month"] = weights
-    return ds
-
-def lat_mean(ds):
-    return ds.weighted(np.cos(np.deg2rad(ds.lat))).mean("lat")
-
-def global_mean(da):
-    return lat_mean(da.mean("lon"))
+from utils import global_mean, add_weights, global_trend_and_ci
 
 season_def = {
     "ANN":np.arange(12)+1,
@@ -22,7 +12,7 @@ season_def = {
 }
 
 # read ceres
-ds = xr.open_mfdataset(["ceres-data/CERES_EBAF-TOA_Edition4.2.1_200003-202601.nc"])
+ds = xr.open_mfdataset(["raw_data/CERES_EBAF-TOA_Edition4.2.1_200003-202601.nc"])
 ds["net"] = ds.toa_net_all_mon
 ds["net_clr"] = ds.toa_net_clr_c_mon
 ds["lw"] = -ds.toa_lw_all_mon
@@ -49,9 +39,12 @@ for seas in season_def.keys():
     all.append(sub_mean)
 ds = xr.concat(all, dim="season")
 
-ds_gm = global_mean(ds)
+annual_net_toa = ds.sel(season='ANN').net
+fit, slope, ci = global_trend_and_ci(annual_net_toa)
 
-ds_gm.to_netcdf("pp/ceres_gm_timeseries.nc")
+ds_gm = global_mean(ds)
+ds_gm['annual_linear_fit'] = fit
+ds_gm.assign_attrs({"decadal_net_trend": slope*10, "net_trend_ci": ci*10}).to_netcdf("pp/ceres_gm_timeseries.nc")
 
 # calculate trends
 ds_trend = ds.polyfit("year",1).sel(degree=1).drop_vars(["degree","days_in_month_polyfit_coefficients"])*10

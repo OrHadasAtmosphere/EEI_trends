@@ -1,6 +1,12 @@
 import numpy as np
 from scipy import stats
 
+def add_weights(ds):
+    weights = ds.time.dt.days_in_month
+    weights = weights.where(weights.time.dt.month!=2, 28.65)
+    ds["days_in_month"] = weights
+    return ds
+
 def lat_mean(ds):
     return ds.weighted(np.cos(np.deg2rad(ds.lat))).mean("lat")
 
