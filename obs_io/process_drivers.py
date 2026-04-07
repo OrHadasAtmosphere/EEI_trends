@@ -13,10 +13,9 @@ ds["EIS"] = calc_EIS(ds.t2m, ds.sp, ds.T700, ds.T850)
 ds = ds.drop_vars(["t","pressure_level","number","expver","T700","T850","sp"])
 
 # proper years and weighting
-ds = ds.sel(time=slice("2000-03-01", "2025-03-01")) # "2026-03-01"
+ds = ds.sel(time=slice("2000-03-01", "2025-03-01")) # "2026-03-01" <-- TODO: extend drivers record when Norman extends CERES record
 ds = add_weights(ds)
 ds = march_to_feb_years(ds)
 ds = seasonal_means(ds)
 
-ds_trend = to_trend(ds)
-ds_trend.to_netcdf("pp/era5_drivers_trends.nc")
+to_trend(ds).to_netcdf("pp/era5_drivers_trends.nc")
