@@ -40,3 +40,9 @@ Next, to generate figures, run (for instance)
 ```bash
 python -m make_figs.figure_1_net_eei
 ```
+
+## For Windows users:
+
+Our dependency on `xesmf` unfortunately creates problems for Windows users causing our dependencies to be incompatible with your operating system.
+
+For workarounds see [this `xesmf` docs note](https://xesmf.readthedocs.io/en/stable/installation.html#notes-for-windows-users) and note the [issue](https://github.com/OrHadasAtmosphere/EEI_trends/issues/18) in our repo.
