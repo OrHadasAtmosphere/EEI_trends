@@ -1,4 +1,5 @@
 import numpy as np
+import xarray as xr
 from scipy import stats
 
 def add_weights(ds):
@@ -10,16 +11,32 @@ def add_weights(ds):
 def lat_mean(ds):
     return ds.weighted(np.cos(np.deg2rad(ds.lat))).mean("lat")
 
-def global_mean(da):
-    return lat_mean(da.mean("lon"))
+def global_mean(ds):
+    return lat_mean(ds.mean("lon"))
 
-def global_trend_and_ci(da):
-    """returns global annual mean slope, fit, and 95% CI from data array"""
-    gm = global_mean(da)
-    result = stats.linregress(gm.year.values, gm.values)
-    t_critical = stats.t.ppf(0.975, gm.year.size - 2)
-    ci95 = t_critical * result.stderr
+def trend_and_ci(ds, dim="year", alpha=0.05):
+    def linregress_1d(y, x):
+        res = stats.linregress(x, y)
+        fit = res.intercept + res.slope * x
+        tcrit = stats.t.ppf(1 - alpha/2, len(x) - 2)
+        ci = tcrit * res.stderr
+        return fit, res.slope, ci
+
+    y = ds[["net","net_clr","net_cre","sw","sw_clr","sw_cre","lw","lw_clr","lw_cre"]]
+    fit, slope, ci = xr.apply_ufunc(
+        linregress_1d,
+        y, ds[dim],
+        input_core_dims=[[dim], [dim]],
+        output_core_dims=[[dim], [], []],
+        vectorize=True,
+        dask="parallelized",
+        output_dtypes=[float, float, float],
+    )
+    slope = slope*10 # per decade
+    ci = ci*10 # per decade
     
-    fit = result.intercept + result.slope * gm.year.values 
-    
-    return fit, result.slope, ci95
+    fit = fit.rename({v: f"{v}_fit" for v in fit.data_vars})
+    slope = slope.rename({v: f"{v}_slope_mean" for v in slope.data_vars})
+    ci = ci.rename({v: f"{v}_slope_ci" for v in ci.data_vars})
+    ds = xr.merge([ds,fit,slope,ci])
+    return ds
