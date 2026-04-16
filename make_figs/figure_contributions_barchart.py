@@ -111,6 +111,10 @@ for i, total in enumerate(totals):
 handles, labels = ax.get_legend_handles_labels()
 by_label = dict(zip(labels, handles))
 
+# force legend handles to be fully opaque
+for h in by_label.values():
+    h[0].set_alpha(1)
+
 # build new labels with area fraction
 legend_labels = [
     f"{r.replace("_"," ")} ({area_ann.sel(regime=r)*100:.0f}%)"
@@ -121,6 +125,7 @@ ax.legend(
     by_label.values(),
     legend_labels,
     title="Regime",
+    alignment="left",
     bbox_to_anchor=(1.0, 1.0),
     loc="upper left",
     frameon=False
