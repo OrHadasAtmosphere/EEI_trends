@@ -1,5 +1,5 @@
 name: environment and package setup
-on: [push]
+on: [workflow_dispatch]
 
 jobs:
   test:
