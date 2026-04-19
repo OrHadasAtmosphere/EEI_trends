@@ -1,11 +1,19 @@
 import xarray as xr
+import xesmf as xe
 from . import add_weights, march_to_feb_years, seasonal_means, to_trend
 from utils.calc_EIS import calc_EIS
 
 inputs = "raw_data/"
 
+ceres = xr.open_dataset("pp/ceres_trends.nc")
+ceres = ceres.sortby(["lat","lon"])
+
 # read era5 drivers
 ds = xr.open_mfdataset([inputs+"drivers_levels.nc", inputs+"drivers_pressures.nc", inputs+"drivers_levels_2026.nc", inputs+"drivers_pressures_2026.nc"])
+
+regridder = xe.Regridder(ds, ceres, method="bilinear")
+ds = regridder(ds)
+
 ds["T700"] = ds.sel(pressure_level=700).t
 ds["T850"] = ds.sel(pressure_level=850).t
 ds = ds.rename({"valid_time":"time","latitude":"lat","longitude":"lon"})
