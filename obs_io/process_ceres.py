@@ -2,6 +2,8 @@ import xarray as xr
 from . import march_to_feb_years, add_weights, seasonal_means, to_trend
 from utils import global_mean, trend_and_ci
 
+SAVE_CERES_RAW = False
+
 # read ceres
 ds = xr.open_mfdataset(["raw_data/CERES_EBAF-TOA_Ed4.2.1_Subset_200003-202601.nc"])
 ds["net"] = ds.toa_net_all_mon
@@ -20,17 +22,18 @@ ds = march_to_feb_years(ds)
 ds = add_weights(ds)
 ds = seasonal_means(ds)
 
-# save linear trends
-to_trend(ds).to_netcdf("pp/ceres_trends.nc")
-print("done linear trend")
+if SAVE_CERES_RAW:
+    # save linear trends
+    to_trend(ds).to_netcdf("pp/ceres_trends.nc")
+    print("done linear trend")
 
-# save global-mean
-ds_gm = global_mean(ds).load()
-gm_trend = trend_and_ci(ds_gm)
-gm_trend.to_netcdf("pp/ceres_gm_timeseries.nc")
-ds_gm.close()
-gm_trend.close()
-print("done global-mean")
+    # save global-mean
+    ds_gm = global_mean(ds).load()
+    gm_trend = trend_and_ci(ds_gm)
+    gm_trend.to_netcdf("pp/ceres_gm_timeseries.nc")
+    ds_gm.close()
+    gm_trend.close()
+    print("done global-mean")
 
 # save regime-mean trends
 da = ds.drop_sel(season="ANN").drop_vars(["days_in_month"])
