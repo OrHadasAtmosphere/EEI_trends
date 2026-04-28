@@ -7,6 +7,30 @@ import numpy as np
 central_lon = -135
 color_range_for_trends = 5
 
+# color per regime
+colors = {
+    "nh_storms": "grey",
+    "nh_cryosphere": "cyan",
+    "subsidence_land": "yellow",
+    "subsidence_ocean": "lime",
+    "tropical_ascent": "magenta",
+    "sh_storms": "grey",
+    "sh_cryosphere": "cyan",
+    "residual": "purple",
+}
+
+# hatching per regime
+hatches = {
+    "nh_storms": "/",
+    "sh_storms": "\\",
+    "nh_cryosphere": "/",
+    "sh_cryosphere": "\\",
+    "subsidence_land": "/",
+    "subsidence_ocean": "/",
+    "tropical_ascent": "\\",
+    "residual": "..",
+}
+
 def plot_colormesh(ax, da, lim=color_range_for_trends, mask_and_val=(None, None)):
     mask, val = mask_and_val
     if mask is not None:

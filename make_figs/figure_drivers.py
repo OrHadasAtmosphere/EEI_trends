@@ -48,4 +48,4 @@ plot_colorbar(fig, wv_plt, "kg m$^2$ dec$^{-1}$", b_cbar_position, lim=wv_lim)
 c_cbar_position = [0.71, 0.575, 0.25, 0.02]
 plot_colorbar(fig, sic_plt, "% dec$^{-1}$", c_cbar_position, lim=sic_lim)
 
-plt.savefig('figures/figure_4_drivers.png', dpi=300, bbox_inches='tight')
+plt.savefig('figures/figure_drivers.png', dpi=300, bbox_inches='tight')

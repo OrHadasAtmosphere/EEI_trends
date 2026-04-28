@@ -9,35 +9,13 @@ from matplotlib.collections import PatchCollection
 
 from utils import global_mean
 from utils.plotting import plot_colormesh, plot_coasts_grid, plot_colorbar
+from utils.plotting import colors, hatches
+
 
 net = xr.open_mfdataset(["pp/ceres_trends.nc"]).net.load()
 masks = xr.open_dataset("pp/regime_masks.nc").load()
 
 regime_names = list(masks.data_vars)[:-1]
-
-# color per regime
-colors = {
-    "nh_storms": "grey",
-    "nh_cryosphere": "cyan",
-    "subsidence_land": "yellow",
-    "subsidence_ocean": "lime",
-    "tropical_ascent": "magenta",
-    "sh_storms": "grey",
-    "sh_cryosphere": "cyan",
-    "residual": "purple",
-}
-
-# hatching per regime
-hatches = {
-    "nh_storms": "/",
-    "sh_storms": "\\",
-    "nh_cryosphere": "/",
-    "sh_cryosphere": "\\",
-    "subsidence_land": "/",
-    "subsidence_ocean": "/",
-    "tropical_ascent": "\\",
-    "residual": "..",
-}
 
 ######
 
