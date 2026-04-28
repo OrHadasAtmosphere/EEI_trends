@@ -19,23 +19,23 @@ regime_names = list(masks.data_vars)[:-1]
 colors = {
     "nh_storms": "grey",
     "nh_cryosphere": "cyan",
-    "subsidence_land": "goldenrod",
-    "subsidence_ocean": "blue",
-    "tropical_ascent": "red",
+    "subsidence_land": "yellow",
+    "subsidence_ocean": "lime",
+    "tropical_ascent": "magenta",
     "sh_storms": "grey",
     "sh_cryosphere": "cyan",
-    "residual": "magenta",
+    "residual": "purple",
 }
 
 # hatching per regime
 hatches = {
-    "nh_storms": "//",
-    "nh_cryosphere": "\\",
-    "subsidence_land": "////",
-    "subsidence_ocean": "xx",
-    "tropical_ascent": "\\\\",
+    "nh_storms": "/",
     "sh_storms": "\\",
-    "sh_cryosphere": "//",
+    "nh_cryosphere": "/",
+    "sh_cryosphere": "\\",
+    "subsidence_land": "/",
+    "subsidence_ocean": "/",
+    "tropical_ascent": "\\",
     "residual": "..",
 }
 

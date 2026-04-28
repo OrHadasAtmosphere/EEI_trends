@@ -1,6 +1,7 @@
 import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
 
 PLOT_VAR = "sw"
 
@@ -8,12 +9,12 @@ PLOT_VAR = "sw"
 colors = {
     "nh_storms": "grey",
     "nh_cryosphere": "cyan",
-    "subsidence_land": "goldenrod",
+    "subsidence_land": "yellow",
     "subsidence_ocean": "lime",
     "tropical_ascent": "magenta",
     "sh_storms": "grey",
     "sh_cryosphere": "cyan",
-    "residual": "lightpink",
+    "residual": "purple",
 }
 
 # hatching per regime
@@ -64,7 +65,7 @@ for r in regimes:
             color=colors[r],
             alpha=light_alpha + sig[i]*(1-light_alpha),
             edgecolor="k",
-            label=r,
+            label=r if i==0 else None,
         )
 
         bars_neg = ax.bar(x[i], neg[i], width,
@@ -79,8 +80,8 @@ for r in regimes:
         bars_neg[0].set_hatch(hatch)
 
         pct = values[i]/totals[i]*100
-        if pct > 3:
-            if values[i]:
+        if np.abs(pct) > 5:
+            if values[i] > 0:
                 y = bottom_pos[i] + values[i] / 2
             else:
                 y = bottom_neg[i] + values[i] / 2
@@ -101,32 +102,36 @@ offset = 0.02 * np.max(np.abs(totals)) if len(totals) > 0 else 0
 
 for i, total in enumerate(totals):
     if total >= 0:
-        ax.text(x[i], bottom_pos[i] + offset, f"{total:.2f}",
+        ax.text(x[i] - width/4, bottom_pos[i] + offset, f"{total:.2f}",
                 ha="center", va="bottom", fontsize=8)
     else:
-        ax.text(x[i], bottom_neg[i] - offset, f"{total:.2f}",
+        ax.text(x[i] - width/4, bottom_neg[i] - offset, f"{total:.2f}",
                 ha="center", va="top", fontsize=8)
 
-# legend cleanup
-handles, labels = ax.get_legend_handles_labels()
-by_label = dict(zip(labels, handles))
 
-# force legend handles to be fully opaque
-for h in by_label.values():
-    h[0].set_alpha(1)
+# legend clean 
+legend_handles = []
+legend_labels = []
 
-# build new labels with area fraction
-legend_labels = [
-    f"{r.replace("_"," ")} ({area_ann.sel(regime=r)*100:.0f}%)"
-    for r in by_label.keys()
-]
+for r in regimes:
+    legend_handles.append(
+        Patch(
+            facecolor=colors[r],
+            edgecolor="k",
+            hatch=hatches.get(r, ""),
+            alpha=1.0
+        )
+    )
+    legend_labels.append(
+        f"{r.replace('_',' ')} ({area_ann.sel(regime=r)*100:.0f}%)"
+    )
 
 ax.legend(
-    by_label.values(),
+    legend_handles,
     legend_labels,
     title="Regime",
     alignment="left",
-    bbox_to_anchor=(1.0, 1.0),
+    bbox_to_anchor=(1.02, 1.0),
     loc="upper left",
     frameon=False
 )

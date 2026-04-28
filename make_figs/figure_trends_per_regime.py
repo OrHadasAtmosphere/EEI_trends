@@ -3,7 +3,7 @@ import xarray as xr
 import matplotlib.pyplot as plt
 
 PLOT_SEASON = "ANN"
-AREA_WEIGHT = False
+AREA_WEIGHT = True
 
 # --- color scheme (physically intuitive) ---
 colors = {
