@@ -2,7 +2,7 @@ import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
 
-PLOT_VAR = "net"
+PLOT_VAR = "sw"
 
 # color per regime
 colors = {
@@ -144,7 +144,7 @@ ax.spines["right"].set_visible(False)
 ax.axvline(0.6, color="k", linewidth=1, ls=":")
 ax.axhline(0, color="k", linewidth=0.8)
 
-plt.ylabel("Net EEI trend / W m$^{-2}$ dec$^{-1}$")
+plt.ylabel(f"{PLOT_VAR.upper()} EEI trend / W m$^{{-2}}$ dec$^{{-1}}$")
 
 plt.savefig(f"figures/trend_barchart_{PLOT_VAR}.png",
             dpi=300, bbox_inches='tight')
