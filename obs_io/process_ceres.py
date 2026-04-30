@@ -5,7 +5,7 @@ from utils import global_mean, trend_and_ci
 SAVE_CERES_RAW = False
 
 # read ceres
-ds = xr.open_mfdataset(["raw_data/CERES_EBAF-TOA_Ed4.2.1_Subset_200003-202601.nc"])
+ds = xr.open_mfdataset(["raw_data/CERES_EBAF-TOA_Ed4.2.1_Subset_200003-202602.nc"])
 ds["net"] = ds.toa_net_all_mon
 ds["net_clr"] = ds.toa_net_clr_c_mon
 ds["lw"] = -ds.toa_lw_all_mon
@@ -35,45 +35,46 @@ if SAVE_CERES_RAW:
     gm_trend.close()
     print("done global-mean")
 
-# save regime-mean trends
-da = ds.drop_sel(season="ANN").drop_vars(["days_in_month"])
-masks = xr.open_mfdataset(["pp/regime_masks.nc"])
-regimes = [r for r in masks.data_vars if r != "area"]
+else:
+    # save regime-mean trends
+    da = ds.drop_sel(season="ANN").drop_vars(["days_in_month"])
+    masks = xr.open_mfdataset(["pp/regime_masks.nc"])
+    regimes = [r for r in masks.data_vars if r != "area"]
 
-# average over regimes
-rm = xr.concat(
-    [
-        (da * masks[r])
-        .weighted(masks.area)
-        .mean(("lat", "lon"))
-        .expand_dims(regime=[r])
-        for r in regimes
-    ],
-    dim="regime"
-)
+    # average over regimes
+    rm = xr.concat(
+        [
+            (da * masks[r])
+            .weighted(masks.area)
+            .mean(("lat", "lon"))
+            .expand_dims(regime=[r])
+            for r in regimes
+        ],
+        dim="regime"
+    )
 
-# compute area per regime per season
-area_da = xr.concat(
-    [
-        (masks[r] * masks.area).sum(("lat", "lon")).assign_coords(regime=r)
-        for r in regimes
-    ],
-    dim="regime"
-)
-rm["area"] = area_da
-rm["area_fraction"] = area_da / rm.area.sum("regime")
+    # compute area per regime per season
+    area_da = xr.concat(
+        [
+            (masks[r] * masks.area).sum(("lat", "lon")).assign_coords(regime=r)
+            for r in regimes
+        ],
+        dim="regime"
+    )
+    rm["area"] = area_da
+    rm["area_fraction"] = area_da / rm.area.sum("regime")
 
-# add annual mean
-days_per_season = xr.DataArray(
-    [90.65, 92, 92, 91],
-    coords={"season": ["DJF", "MAM", "JJA", "SON"]},
-    dims="season"
-)
-ann = rm.weighted(days_per_season).mean("season")
-ann = ann.expand_dims(season=["ANN"])
-rm = xr.concat([rm, ann], dim="season")
+    # add annual mean
+    days_per_season = xr.DataArray(
+        [90.65, 92, 92, 91],
+        coords={"season": ["DJF", "MAM", "JJA", "SON"]},
+        dims="season"
+    )
+    ann = rm.weighted(days_per_season).mean("season")
+    ann = ann.expand_dims(season=["ANN"])
+    rm = xr.concat([rm, ann], dim="season")
 
-rm = rm.load()
-rm_trend = trend_and_ci(rm)
-rm_trend.to_netcdf("pp/regime_mean_trends.nc")
-print("done regime-mean")
+    rm = rm.load()
+    rm_trend = trend_and_ci(rm)
+    rm_trend.to_netcdf("pp/regime_mean_trends.nc")
+    print("done regime-mean")

@@ -5,15 +5,6 @@ import xarray as xr
 from utils.plotting import central_lon, plot_colormesh, plot_coasts_grid, plot_colorbar
 
 drivers_trends = xr.open_dataset('pp/era5_drivers_trends.nc', engine='netcdf4')
-land_sea_mask = (
-    xr.open_dataset('raw_data/era5_land_sea_mask.nc')
-    .rename({'valid_time': 'time', 'latitude': 'lat', 'longitude': 'lon'})
-    .isel(time=0)
-    .lsm
-    .drop_vars(['number', 'time', 'expver'])
-    .reset_coords(drop=True)
-    .drop_attrs()
-)
 
 fig = plt.figure(figsize=(15, 10), constrained_layout=True)
 proj = ccrs.Robinson(central_longitude=central_lon)
@@ -23,12 +14,12 @@ ax_b = fig.add_subplot(2, 3, 2, projection=proj)
 ax_c = fig.add_subplot(2, 3, 3, projection=proj)
 
 sst_lim = 1.
-wv_lim = 3.
-sic_lim = 0.15
+wv_lim = 2.
+sic_lim = 0.1
 
-sst_plt = plot_colormesh(ax_a, drivers_trends.sel(season='ANN').sst, lim=sst_lim, mask_and_val=(land_sea_mask, 0))
+sst_plt = plot_colormesh(ax_a, drivers_trends.sel(season='ANN').sst, lim=sst_lim)
 wv_plt = plot_colormesh(ax_b, drivers_trends.sel(season='ANN').tcw, lim=wv_lim)
-sic_plt = plot_colormesh(ax_c, drivers_trends.sel(season='ANN').siconc, lim=sic_lim, mask_and_val=(land_sea_mask, 0))
+sic_plt = plot_colormesh(ax_c, drivers_trends.sel(season='ANN').siconc, lim=sic_lim)
 
 plot_coasts_grid(ax_a)
 plot_coasts_grid(ax_b)
