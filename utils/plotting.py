@@ -25,7 +25,7 @@ hatches = {
     "sh_storms": "\\",
     "nh_cryosphere": "/",
     "sh_cryosphere": "\\",
-    "subsidence_land": "/",
+    "subsidence_land": "//",
     "subsidence_ocean": "/",
     "tropical_ascent": "\\",
     "residual": "..",

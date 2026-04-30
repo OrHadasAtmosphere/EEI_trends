@@ -24,6 +24,7 @@ SIGMA_LON = 1.5
 TROPICAL_LAT = 40
 POLAR_LAT = 60
 SIC_THRESH = 0.1
+LAND_THRESH = 0.1
 OMEGA_THRESH = 0.0
 NH_STORM_FACTOR = 0.3
 SH_STORM_FACTOR = 0.3
@@ -58,10 +59,10 @@ ds["SLP_var"] = xr.apply_ufunc(
 
 # define masks
 ds["nh_cryosphere"] = ds.nh_cryosphere.where(((ds.lat >= POLAR_LAT) & (ds.siconc > SIC_THRESH)) # sea ice >60
-                                    | ((ds.lat >=75) & (ds.lsm > 0.5)) # any land >75 
-                                    | ((ds.lat >=POLAR_LAT) & (ds.lsm > 0.5) & (ds.lon > 300) & (ds.lon < 350)), 0) # greenland
+                                    | ((ds.lat >=75) & (ds.lsm > LAND_THRESH)) # any land >75 
+                                    | ((ds.lat >=POLAR_LAT) & (ds.lsm > LAND_THRESH) & (ds.lon > 300) & (ds.lon < 350)), 0) # greenland
 ds["sh_cryosphere"] = ds.sh_cryosphere.where(((ds.lat <= -POLAR_LAT) & (ds.siconc > SIC_THRESH)) # sea ice >60
-                                    | ((ds.lat <= -70) & (ds.lsm > 0.5)), 0) # any land >70
+                                    | ((ds.lat <= -65) & (ds.lsm > LAND_THRESH)), 0) # any land >65
 
 # SLP_var_max for NH and SH
 ds["SLP_var_max_nh"] = ds.SLP_var.where(ds.lat > 0).max(dim=("lat", "lon"))
@@ -74,10 +75,10 @@ ds["tropical_ascent"] = ds.tropical_ascent.where((ds.lat >= -TROPICAL_LAT) & (ds
                                     & (ds.nh_storms < 0.5) & (ds.sh_storms < 0.5), 0)
 ds["subsidence_land"] = ds.subsidence_land.where((ds.lat >= -TROPICAL_LAT) & (ds.lat <= TROPICAL_LAT) 
                                     & (ds.omega500 > OMEGA_THRESH) 
-                                    & (ds.lsm > 0.5) & (ds.nh_storms < 0.5) & (ds.sh_storms < 0.5), 0)
+                                    & (ds.lsm > LAND_THRESH) & (ds.nh_storms < 0.5) & (ds.sh_storms < 0.5), 0)
 ds["subsidence_ocean"] = ds.subsidence_ocean.where((ds.lat >= -TROPICAL_LAT) & (ds.lat <= TROPICAL_LAT) 
                                     & (ds.omega500 > OMEGA_THRESH) 
-                                    & (ds.lsm < 0.5) & (ds.nh_storms < 0.5) & (ds.sh_storms < 0.5), 0)
+                                    & (ds.lsm < LAND_THRESH) & (ds.nh_storms < 0.5) & (ds.sh_storms < 0.5), 0)
 
 ds["residual"] = ds.residual.where((ds.nh_cryosphere < 0.5) & (ds.sh_cryosphere < 0.5) 
                                     & (ds.nh_storms < 0.5) & (ds.sh_storms < 0.5)

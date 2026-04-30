@@ -16,11 +16,27 @@ net = xr.open_mfdataset(["pp/ceres_trends.nc"]).net.load()
 masks = xr.open_dataset("pp/regime_masks.nc").load()
 
 regime_names = list(masks.data_vars)[:-1]
+letter = np.array(["a","b","c","d"])
+
+def edge_band(mask, n=2):
+    """
+    n = thickness in grid cells
+    """
+    interior = mask.astype(bool)
+
+    for _ in range(n):
+        north = interior.shift(lat=-1, fill_value=False)
+        south = interior.shift(lat=1, fill_value=False)
+        east  = interior.roll(lon=-1, roll_coords=False)
+        west  = interior.roll(lon=1,  roll_coords=False)
+
+        interior = interior & north & south & east & west
+
+    return mask.astype(bool) & (~interior)
 
 ######
 
 fig,axes = plt.subplots(2, 2, figsize=(9.5,6), subplot_kw={"projection":ccrs.Robinson(central_longitude=-135)}, constrained_layout=True)
-letter = np.array(["a","b","c","d"])
 
 for i,s in enumerate(["MAM","JJA","SON","DJF"]):
     ax = axes.flatten()[i]
@@ -33,13 +49,13 @@ for i,s in enumerate(["MAM","JJA","SON","DJF"]):
 
     for name in regime_names:
         data = masks[name].sel(season=s).astype(int)
+        band = edge_band(data, n=2)
 
-        # 1. Contour edges
-        ax.contour(
-            data.lon, data.lat, data,
-            levels=[0.5],
+        # 1. Colored boundary band (replaces contour)
+        ax.contourf(
+            data.lon, data.lat, band,
+            levels=[0.5, 1],
             colors=[colors[name]],
-            linewidths=1.5,
             transform=ccrs.PlateCarree(),
         )
 
@@ -59,7 +75,7 @@ for i,s in enumerate(["MAM","JJA","SON","DJF"]):
 plot_colorbar(fig, cf, "EEI Trend / W m$^{-2}$ dec$^{-1}$", [0.25, -0.05, 0.5, 0.02])
 plt.savefig("figures/eei_seasons_masks.png", dpi=300, facecolor="w", bbox_inches="tight")
 
-# #####
+#####
 
 # fig,axes = plt.subplots(2, 2, figsize=(9.5,6), subplot_kw={"projection":ccrs.Robinson(central_longitude=-135)}, constrained_layout=True)
 # letter = np.array(["a","b","c","d"])
@@ -84,13 +100,13 @@ plt.savefig("figures/eei_seasons_masks.png", dpi=300, facecolor="w", bbox_inches
 #     ax = axes.flatten()[i]
 #     for name in regime_names:
 #         data = masks[name].sel(season=s).astype(int)
+#         band = edge_band(data, n=2)
 
-#         # 1. Contour edges
-#         ax.contour(
-#             data.lon, data.lat, data,
-#             levels=[0.5],
+#         # 1. Colored boundary band (replaces contour)
+#         ax.contourf(
+#             data.lon, data.lat, band,
+#             levels=[0.5, 1],
 #             colors=[colors[name]],
-#             linewidths=1.5,
 #             transform=ccrs.PlateCarree(),
 #         )
 
@@ -114,33 +130,33 @@ plt.savefig("figures/eei_seasons_masks.png", dpi=300, facecolor="w", bbox_inches
 # plt.savefig("figures/seasons_masks.png", dpi=300, facecolor="w", bbox_inches="tight")
 
 
-#######
+# #######
 
-plt.figure(figsize=(6,4))
-bottom = np.zeros(len(masks.season))
-regime_names = list(masks.data_vars)[:-1]
-for v in regime_names:
-    area = (masks[v]*masks.area).sum(["lat","lon"])
-    plt.fill_between(masks.season, bottom, bottom+area, color=colors[v], alpha=0.7, label=v)
-    plt.plot(masks.season, bottom+area, color="k")
-    plt.fill_between(masks.season, bottom, bottom+area, alpha=0, hatch=hatches[v])
-    bottom = bottom + area
+# plt.figure(figsize=(6,4))
+# bottom = np.zeros(len(masks.season))
+# regime_names = list(masks.data_vars)[:-1]
+# for v in regime_names:
+#     area = (masks[v]*masks.area).sum(["lat","lon"])
+#     plt.fill_between(masks.season, bottom, bottom+area, color=colors[v], alpha=0.7, label=v)
+#     plt.plot(masks.season, bottom+area, color="k")
+#     plt.fill_between(masks.season, bottom, bottom+area, alpha=0, hatch=hatches[v])
+#     bottom = bottom + area
 
-# Create legend with colored + hatched patches
-legend_handles = []
-for v in regime_names:
-    patch = mpatches.Patch(
-        facecolor=colors[v],
-        alpha=0.7,
-        hatch=hatches[v],
-        edgecolor='black',  # optional: outlines the patch
-        label=v
-    )
-    legend_handles.append(patch)
-plt.legend(handles=legend_handles, loc=(1,0.5))
+# # Create legend with colored + hatched patches
+# legend_handles = []
+# for v in regime_names:
+#     patch = mpatches.Patch(
+#         facecolor=colors[v],
+#         alpha=0.7,
+#         hatch=hatches[v],
+#         edgecolor='black',  # optional: outlines the patch
+#         label=v
+#     )
+#     legend_handles.append(patch)
+# plt.legend(handles=legend_handles, loc=(1,0.5))
 
-plt.ylim(0,5.15e14)
-plt.ylabel("Area / m$^2$")
-plt.gca().spines["top"].set_visible(False)
-plt.gca().spines["right"].set_visible(False)
-plt.savefig("figures/area_seasons_masks.png", dpi=300, facecolor="w", bbox_inches="tight")
+# plt.ylim(0,5.15e14)
+# plt.ylabel("Area / m$^2$")
+# plt.gca().spines["top"].set_visible(False)
+# plt.gca().spines["right"].set_visible(False)
+# plt.savefig("figures/area_seasons_masks.png", dpi=300, facecolor="w", bbox_inches="tight")
