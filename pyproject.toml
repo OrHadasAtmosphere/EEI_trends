@@ -20,6 +20,7 @@ dependencies = [
     "scipy==1.17.1",
     "netcdf4==1.7.4",
     "xesmf==0.9.2",
+    "seaborn==0.13.2",
 ]
 
 [project.optional-dependencies]
