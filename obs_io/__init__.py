@@ -8,7 +8,7 @@ def add_weights(ds):
     return ds
 
 def march_to_feb_years(ds):
-    ds = ds.sel(time=slice("2000-03-01", "2025-03-01"))
+    ds = ds.sel(time=slice("2000-03-01", "2026-03-01"))
     year_adj = ds.time.dt.year - (ds.time.dt.month == 1) - (ds.time.dt.month == 2) # define year Mar-Feb
     return ds.assign_coords(year=year_adj)
 
