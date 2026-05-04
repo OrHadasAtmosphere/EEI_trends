@@ -5,8 +5,13 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "eei-processes"
 version = "0.1.0"
-description = "figures and analysis of the global EEI trend with a process-based framework"
-requires-python = "==3.14.3"
+description = "process-based analysis of EEI trends"
+authors = [
+  {name = "Clare Singer", email = "Clare.Singer@colorado.edu"},
+  {name = "Or Hadas", email = "or.hadas@weizmann.ac.il"},
+  {name = "Rowan Orlijan-Rhyne", email = "rowan.orlijan-rhyne@mpimet.mpg.de"},
+]
+requires-python = "==3.13.5"
 dependencies = [
     "cf-xarray==0.10.11",
     "matplotlib==3.10.8",

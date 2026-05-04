@@ -1,8 +1,10 @@
+import os
 import xarray as xr
 from . import march_to_feb_years, add_weights, seasonal_means, to_trend
 from utils import global_mean, trend_and_ci
 
-SAVE_CERES_RAW = False
+SAVE_CERES_RAW = os.environ.get("SAVE_CERES_RAW", "False")
+SAVE_CERES_RAW = SAVE_CERES_RAW == "True"
 
 # read ceres
 ds = xr.open_mfdataset(["raw_data/CERES_EBAF-TOA_Ed4.2.1_Subset_200003-202602.nc"])

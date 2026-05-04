@@ -2,7 +2,7 @@ name: eei-env
 channels:
     - conda-forge
 dependencies:
-    - python=3.14.3
+    - python=3.13.5
     - cf-xarray=0.10.11
     - matplotlib=3.10.8
     - numpy=2.4.3
