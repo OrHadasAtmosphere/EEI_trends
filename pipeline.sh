@@ -29,11 +29,7 @@ echo "Processing CERES EBAF trends over regimes"
 python3 -m obs_io.ceres SAVE_CERES_RAW=False
 
 echo "Making plots"
-for fig in make_figs/*.py; do
-    # Skip if no files found
-    [[ -f "$fig" ]] || continue
-    
-    # Extract the module name (remove path and .py extension)
+for fig in make_figs/*.py; do    
     module_name=$(basename "$fig" .py)
     
     echo "Running: python3 -m make_figs.$module_name"
