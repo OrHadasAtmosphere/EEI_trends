@@ -5,7 +5,7 @@ set -u
 echo "Using code environment from .yaml"
 micromamba env create -f environment.yaml
 eval "$(micromamba shell hook --shell bash)"
-micromamba activate
+micromamba activate eei-env
 echo "Installing tools"
 pip install .
 
