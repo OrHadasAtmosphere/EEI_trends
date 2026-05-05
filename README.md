@@ -41,6 +41,14 @@ Next, to generate figures, run (for instance)
 python -m make_figs.figure_1_net_eei
 ```
 
+The bash script `pipeline.sh` executes all necessary commands to pre-process CERES and ERA5 data and to generate figures. Run the code with
+
+```bash
+bash pipeline.sh
+```
+
+or simply execute the commands contained in the file at your leisure.
+
 ## For Windows users:
 
 Our dependency on `xesmf` unfortunately creates problems for Windows users causing our dependencies to be incompatible with your operating system.
