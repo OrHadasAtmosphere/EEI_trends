@@ -160,16 +160,16 @@ for name, lat_min, lat_max, lon_min, lon_max, color, _ in stcu_deck_boxes:
     for x, y, w, h in rects:
         patch = mpatches.Rectangle(
             (x, y), w, h,
-            linewidth=1.25, edgecolor=color, facecolor="none",
-            transform=ccrs.PlateCarree(), zorder=5,
+            linewidth=3.5, edgecolor=color, facecolor=color,
+            transform=ccrs.PlateCarree(), alpha=0.5,
         )
         map_ax.add_patch(patch)
     label_lon = lmin + 0.5 * ((lmax - lmin))
     label_lat = lat_max
     map_ax.text(
         label_lon, label_lat, name,
-        transform=ccrs.PlateCarree(), fontsize=8, ha="left", va="bottom",
-        bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.7, "pad": 1.0}, zorder=6,
+        transform=ccrs.PlateCarree(), fontsize=11, ha="left", va="bottom",
+        bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.7, "pad": 1.0},
     )
 
 map_ax.set_global()
