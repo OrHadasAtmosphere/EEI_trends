@@ -6,7 +6,7 @@ import seaborn as sns
 from scipy.stats import pearsonr
 import xarray as xr
 
-from utils.plotting import central_lon, plot_coasts_grid
+from utils.plotting import central_lon, plot_coasts_grid, colors, hatches, edge_band
 
 ceres = xr.open_mfdataset(["pp/ceres_trends.nc"])
 subsidence = xr.open_dataset("pp/regime_masks.nc").subsidence_ocean
@@ -102,7 +102,7 @@ slope, intercept, r = regression(sst_all_boxes, cre_all_boxes)
 x_reg = np.linspace(min(sst_all_boxes), max(sst_all_boxes), 100)
 ax.plot(
     x_reg, slope * x_reg + intercept,
-    color="black", linestyle="--", linewidth=1.5,
+    color=colors['subsidence_ocean'], linestyle="--", linewidth=2,
     label=f"All decks: {slope:.2f} Wm$^{{-2}}$K$^{{-1}}$, R$^2$ = {r**2:.2f}"
 )
 
@@ -128,15 +128,28 @@ ax.grid(alpha=0.3, linestyle=":")
 mask_union = subsidence.any(dim="season")
 lon_vals = mask_union.lon.values
 lat_vals = mask_union.lat.values
-mask_data = mask_union.values
 
+# 1. Colored boundary band
 map_ax.contourf(
-    lon_vals, lat_vals, mask_data,
-    levels=[0.5, 1.5],
-    colors=["#6baed6"],
-    alpha=0.35,
+    lon_vals, lat_vals, edge_band(mask_union).values,
+    levels=[0.5, 1],
+    colors=[colors['subsidence_ocean']],
+    alpha=0.5,
     transform=ccrs.PlateCarree(),
 )
+
+# 2. Hatched regions with colored hatches
+map_ax.contourf(
+    lon_vals, lat_vals, mask_union.values,
+    levels=[0.5, 1],
+    colors='none',
+    hatches=[hatches['subsidence_ocean']],
+    transform=ccrs.PlateCarree(),
+)
+# trick to color the hatches
+map_ax.collections[-1:][0].set_edgecolor(colors['subsidence_ocean'])
+map_ax.collections[-1:][0].set_linewidth(0.0)  # remove polygon edges
+
 plot_coasts_grid(map_ax)
 
 # draw rectangles and labels around stcu regions
@@ -160,6 +173,6 @@ for name, lat_min, lat_max, lon_min, lon_max, color, _ in stcu_deck_boxes:
     )
 
 map_ax.set_global()
-map_ax.set_title("Stratocumulus decks within regions of subsidence")
+map_ax.set_title("Stratocumulus decks within oceanic regions of subsidence (all seasons)")
 fig.savefig(f"figures/figure_stcu_ssts.png", dpi=500, bbox_inches='tight')
 print(f"plotted sst regressed on net cre for {len(sst_all_boxes)} gridpoints")
