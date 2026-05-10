@@ -1,7 +1,7 @@
 import cartopy.crs as ccrs
 import numpy as np
+import numpy.ma as ma
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
 import seaborn as sns
 from scipy.stats import pearsonr
 import xarray as xr
@@ -51,27 +51,29 @@ def regression(x, y):
 # define lat-lon boxes containing stcu decks
 stcu_deck_boxes = [
     # name, lat_min, lat_max, lon_min, lon_max, color, cmap
-    ("Peruvian deck", -30.0, -10.0, -100.0, -70.0, "tab:purple", "Purples"),
-    ("Namibian deck", -30.0, -10.0, -15, 15, "tab:red", "Reds"),
-    ("Australian deck", -35.0, -20.0, 90.0, 115.0, "tab:gray", "Greys"),
-    ("Californian deck", 10.0, 35.0, -140.0, -110.0,  "tab:green", "Greens"),
-    ("Canarian deck", 15.0, 30.0, -35.0, -15.0, "tab:blue", "Blues"),
+    ("Peruvian deck", -30.0, -10.0, -100.0, -70.0, "purple", "Purples"),
+    ("Namibian deck", -30.0, -10.0, -15, 15, "red", "Reds"),
+    ("Australian deck", -35.0, -20.0, 90.0, 115.0, "gray", "Greys"),
+    ("Californian deck", 10.0, 35.0, -140.0, -110.0,  "green", "Greens"),
+    ("Canarian deck", 15.0, 30.0, -35.0, -15.0, "blue", "Blues"),
 ]
 
 fig = plt.figure(figsize=(9, 12), constrained_layout=True)
 ax = fig.add_subplot(2, 1, 1)
-map_ax = fig.add_subplot(2, 1, 2, projection=ccrs.Robinson(central_longitude=central_lon))
+map_ax = fig.add_axes(
+    [0.0745, 0.745, 0.35, 0.35],  # [left, bottom, width, height]
+    projection=ccrs.Robinson(central_longitude=central_lon)
+)
 
-# - upper plot: - 
+# - main plot: - 
 
 ax.set_xlabel("SST Trend / K dec$^{-1}$")
 ax.set_ylabel( "Net CRE Trend / Wm$^{-2}$dec$^{-1}$")
 
 # accumulate all pts for all-deck fit
 sst_all_boxes, cre_all_boxes = [], []
-legend_patches, contour_labels = [], []
 
-for (name, lat_min, lat_max, lon_min, lon_max, color, cmap_name) in stcu_deck_boxes:
+for (_, lat_min, lat_max, lon_min, lon_max, _, cmap_name) in stcu_deck_boxes:
     # accumulate per-box for per-box fits
     sst_all_seasons, cre_all_seasons = [], []
 
@@ -94,7 +96,6 @@ for (name, lat_min, lat_max, lon_min, lon_max, color, cmap_name) in stcu_deck_bo
     
     sns.kdeplot(x=sst_all_seasons, y=cre_all_seasons, cmap=cmap, levels=[0.5, 0.75, 0.9, 0.95, 0.975, 0.99], ax=ax)
     slope, intercept, r = regression(sst_all_seasons, cre_all_seasons)
-    legend_patches.append(mpatches.Patch(color=cmap(0.6), linestyle="-", alpha=0.6))
 
 slope, intercept, r = regression(sst_all_boxes, cre_all_boxes)
 x_reg = np.linspace(min(sst_all_boxes), max(sst_all_boxes), 100)
@@ -104,7 +105,7 @@ ax.plot(
     label=f"Slope$=${slope:.2f} Wm$^{{-2}}$K$^{{-1}}$, $r^2=${r**2:.2f}"
 )
 
-xminp, xmaxp, yminp, ymaxp = (5., 93., 5., 93.)
+xminp, xmaxp, yminp, ymaxp = (5., 92., 6., 90.)
 xmin = np.nanpercentile(sst_all_boxes, xminp)
 xmax = np.nanpercentile(sst_all_boxes, xmaxp)
 ymin = np.nanpercentile(cre_all_boxes, yminp)
@@ -112,15 +113,12 @@ ymax = np.nanpercentile(cre_all_boxes, ymaxp)
 ax.set_xlim(xmin, xmax)
 ax.set_ylim(ymin, ymax)
 
-handles, labels = ax.get_legend_handles_labels()
-handles += legend_patches
-labels += contour_labels
-ax.legend(handles=handles, labels=labels, frameon=False, loc="lower right", fontsize=8)
+ax.legend(frameon=False, loc="lower right", fontsize=8)
 ax.axhline(y=0, color='black', linewidth=0.5)
 ax.axvline(x=0, color='black', linewidth=0.5)
 ax.grid(alpha=0.3, linestyle=":")
 
-# - lower plot (map of stcu lat-lon boxes and of subsidence ocean region): -
+# - inset plot (map of stcu lat-lon boxes and of subsidence ocean region): -
 
 # color subsidence mask for union of all seasons' masks
 mask_union = subsidence.any(dim="season")
@@ -150,26 +148,30 @@ map_ax.collections[-1:][0].set_linewidth(0.0)  # remove polygon edges
 
 plot_coasts_grid(map_ax)
 
-# draw rectangles and labels around stcu regions
-for name, lat_min, lat_max, lon_min, lon_max, color, _ in stcu_deck_boxes:
-    lmin = normalize_lon(lon_min)
-    lmax = normalize_lon(lon_max)
-    rects = [(lmin, lat_min, lmax - lmin, lat_max - lat_min)]
-    for x, y, w, h in rects:
-        patch = mpatches.Rectangle(
-            (x, y), w, h,
-            linewidth=3.5, edgecolor=color, facecolor=color,
-            transform=ccrs.PlateCarree(), alpha=0.5,
-        )
-        map_ax.add_patch(patch)
-    label_lon = lmin + 0.5 * ((lmax - lmin))
-    label_lat = lat_max
-    map_ax.text(
-        label_lon, label_lat, name,
-        transform=ccrs.PlateCarree(), fontsize=11, ha="left", va="bottom",
-        bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.7, "pad": 1.0},
-    )
+# draw filled patches and labels around stcu regions
+for _, lat_min, lat_max, lon_min, lon_max, color, _ in stcu_deck_boxes:
 
-map_ax.set_global()
-fig.savefig(f"figures/figure_stcu_ssts.png", dpi=500, bbox_inches='tight')
+    data_for_plot = ceres.net_cre.sel(season='ANN')
+
+    if lon_min < 0 and lon_max > 0:
+        # split into two if region straddles 0 deg lon
+        regions = [(lon_min, 0), (0, lon_max)]
+    else:
+        regions = [(lon_min, lon_max)]
+
+    for region_lon_min, region_lon_max in regions:
+        lon_idx = lon_idx_selection(data_for_plot, region_lon_min, region_lon_max)
+        lat_idx = np.where((data_for_plot.lat.values >= lat_min) & (data_for_plot.lat.values <= lat_max))[0]
+
+        masked_array = ma.masked_where(~(mask_union.isel(lon=lon_idx, lat=lat_idx) > 0.5), np.ones_like(mask_union.isel(lon=lon_idx, lat=lat_idx)))
+        # use pcolor because contourf gives weird blank line at 0 deg lon
+        map_ax.pcolor(
+            data_for_plot.lon.values[lon_idx],
+            data_for_plot.lat.values[lat_idx],
+            masked_array,
+            color=color,
+            alpha=0.5,
+            transform=ccrs.PlateCarree(),
+        )
+fig.savefig(f"figures/stcu_ssts.png", dpi=500, bbox_inches='tight')
 print(f"plotted sst regressed on net cre for {len(sst_all_boxes)} gridpoints")
