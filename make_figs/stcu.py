@@ -64,9 +64,8 @@ map_ax = fig.add_subplot(2, 1, 2, projection=ccrs.Robinson(central_longitude=cen
 
 # - upper plot: - 
 
-ax.set_xlabel("SST trend / K decade$^{-1}$")
-ax.set_ylabel( "CRE / W m$^{-2}$ decade$^{-1}$")
-ax.set_title("SST coupling with Net CRE for StCu decks (all seasons)")
+ax.set_xlabel("SST Trend / K dec$^{-1}$")
+ax.set_ylabel( "Net CRE Trend / Wm$^{-2}$dec$^{-1}$")
 
 # accumulate all pts for all-deck fit
 sst_all_boxes, cre_all_boxes = [], []
@@ -96,14 +95,13 @@ for (name, lat_min, lat_max, lon_min, lon_max, color, cmap_name) in stcu_deck_bo
     sns.kdeplot(x=sst_all_seasons, y=cre_all_seasons, cmap=cmap, levels=[0.5, 0.75, 0.9, 0.95, 0.975, 0.99], ax=ax)
     slope, intercept, r = regression(sst_all_seasons, cre_all_seasons)
     legend_patches.append(mpatches.Patch(color=cmap(0.6), linestyle="-", alpha=0.6))
-    contour_labels.append(f"{name}: {slope:.2f} Wm$^{{-2}}$K$^{{-1}}$, R$^2$ = {r**2:.2f}")
 
 slope, intercept, r = regression(sst_all_boxes, cre_all_boxes)
 x_reg = np.linspace(min(sst_all_boxes), max(sst_all_boxes), 100)
 ax.plot(
     x_reg, slope * x_reg + intercept,
-    color=colors['subsidence_ocean'], linestyle="--", linewidth=2,
-    label=f"All decks: {slope:.2f} Wm$^{{-2}}$K$^{{-1}}$, R$^2$ = {r**2:.2f}"
+    color="black", linestyle="--", linewidth=2,
+    label=f"Slope$=${slope:.2f} Wm$^{{-2}}$K$^{{-1}}$, $r^2=${r**2:.2f}"
 )
 
 xminp, xmaxp, yminp, ymaxp = (5., 93., 5., 93.)
@@ -173,6 +171,5 @@ for name, lat_min, lat_max, lon_min, lon_max, color, _ in stcu_deck_boxes:
     )
 
 map_ax.set_global()
-map_ax.set_title("Stratocumulus decks within oceanic regions of subsidence (all seasons)")
 fig.savefig(f"figures/figure_stcu_ssts.png", dpi=500, bbox_inches='tight')
 print(f"plotted sst regressed on net cre for {len(sst_all_boxes)} gridpoints")
