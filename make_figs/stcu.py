@@ -51,11 +51,11 @@ def regression(x, y):
 # define lat-lon boxes containing stcu decks
 stcu_deck_boxes = [
     # name, lat_min, lat_max, lon_min, lon_max, color, cmap
-    ("Peruvian deck", -30.0, -10.0, -100.0, -70.0, "purple", "Purples"),
-    ("Namibian deck", -30.0, -10.0, -15, 15, "red", "Reds"),
-    ("Australian deck", -35.0, -20.0, 90.0, 115.0, "gray", "Greys"),
-    ("Californian deck", 10.0, 35.0, -140.0, -110.0,  "green", "Greens"),
-    ("Canarian deck", 15.0, 30.0, -35.0, -15.0, "blue", "Blues"),
+    ("Peruvian", -30.0, -10.0, -100.0, -70.0, "purple"),
+    ("Namibian", -30.0, -10.0, -15, 15, "red"),
+    ("Australian", -35.0, -20.0, 90.0, 115.0, "gray"),
+    ("Californian", 10.0, 35.0, -140.0, -110.0,  "green"),
+    ("Canarian", 15.0, 30.0, -35.0, -15.0, "blue"),
 ]
 
 fig = plt.figure(figsize=(9, 12), constrained_layout=True)
@@ -76,7 +76,7 @@ ax.set_ylabel( "Net CRE Trend / Wm$^{-2}$dec$^{-1}$")
 # accumulate all pts for all-deck fit
 sst_all_boxes, cre_all_boxes = [], []
 
-for (_, lat_min, lat_max, lon_min, lon_max, _, cmap_name) in stcu_deck_boxes:
+for (_, lat_min, lat_max, lon_min, lon_max, color) in stcu_deck_boxes:
     # accumulate per-box for per-box fits
     sst_all_seasons, cre_all_seasons = [], []
 
@@ -94,10 +94,8 @@ for (_, lat_min, lat_max, lon_min, lon_max, _, cmap_name) in stcu_deck_boxes:
         sst_all_seasons.extend(sst_box)
         cre_all_seasons.extend(cre_box)
 
-    # KDE for all points in StCu region, over all seasons
-    cmap = plt.get_cmap(cmap_name)
-    
-    sns.kdeplot(x=sst_all_seasons, y=cre_all_seasons, cmap=cmap, levels=[0.5, 0.75, 0.9, 0.95, 0.975, 0.99], ax=ax)
+    # KDE for all points in StCu region, over all seasons    
+    sns.kdeplot(x=sst_all_seasons, y=cre_all_seasons, color=color, levels=[0.775, 0.95, 0.99], ax=ax)
     slope, intercept, r = regression(sst_all_seasons, cre_all_seasons)
 
 slope, intercept, r = regression(sst_all_boxes, cre_all_boxes)
@@ -152,7 +150,14 @@ map_ax.collections[-1:][0].set_linewidth(0.0)  # remove polygon edges
 plot_coasts_grid(map_ax)
 
 # draw filled patches and labels around stcu regions
-for _, lat_min, lat_max, lon_min, lon_max, color, _ in stcu_deck_boxes:
+for name, lat_min, lat_max, lon_min, lon_max, color in stcu_deck_boxes:
+    label_lon = lon_min + 0.5 * ((lon_max - lon_min))
+    label_lat = lat_max
+    map_ax.text(
+        label_lon, label_lat, name,
+        transform=ccrs.PlateCarree(), fontsize=12, ha="left", va="bottom",
+        bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.7, "pad": 1.0}, zorder=6,
+    )
 
     data_for_plot = ceres.net_cre.sel(season='ANN')
 
