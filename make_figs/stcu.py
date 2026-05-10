@@ -151,8 +151,8 @@ plot_coasts_grid(map_ax)
 
 # draw filled patches and labels around stcu regions
 for name, lat_min, lat_max, lon_min, lon_max, color in stcu_deck_boxes:
-    label_lon = lon_min + 0.5 * ((lon_max - lon_min))
-    label_lat = lat_max
+    label_lon = lon_min + 0.25 * ((lon_max - lon_min))
+    label_lat = lat_max + 0.5
     map_ax.text(
         label_lon, label_lat, name,
         transform=ccrs.PlateCarree(), fontsize=12, ha="left", va="bottom",
