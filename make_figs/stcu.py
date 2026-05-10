@@ -60,14 +60,17 @@ stcu_deck_boxes = [
 
 fig = plt.figure(figsize=(9, 12), constrained_layout=True)
 ax = fig.add_subplot(2, 1, 1)
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
 map_ax = fig.add_axes(
     [0.0745, 0.745, 0.35, 0.35],  # [left, bottom, width, height]
     projection=ccrs.Robinson(central_longitude=central_lon)
 )
+map_ax.set_extent([-180, 180, -60, 60], crs=ccrs.PlateCarree())
 
 # - main plot: - 
 
-ax.set_xlabel("SST Trend / K dec$^{-1}$")
+ax.set_xlabel("SST Trend / Kdec$^{-1}$")
 ax.set_ylabel( "Net CRE Trend / Wm$^{-2}$dec$^{-1}$")
 
 # accumulate all pts for all-deck fit
@@ -102,7 +105,7 @@ x_reg = np.linspace(min(sst_all_boxes), max(sst_all_boxes), 100)
 ax.plot(
     x_reg, slope * x_reg + intercept,
     color="black", linestyle="--", linewidth=2,
-    label=f"Slope$=${slope:.2f} Wm$^{{-2}}$K$^{{-1}}$, $r^2=${r**2:.2f}"
+    label=f"slope$=${slope:.2f} Wm$^{{-2}}$K$^{{-1}}$, $r^2=${r**2:.2f}"
 )
 
 xminp, xmaxp, yminp, ymaxp = (5., 92., 6., 90.)
@@ -113,7 +116,7 @@ ymax = np.nanpercentile(cre_all_boxes, ymaxp)
 ax.set_xlim(xmin, xmax)
 ax.set_ylim(ymin, ymax)
 
-ax.legend(frameon=False, loc="lower right", fontsize=8)
+ax.legend(frameon=False, loc="lower right", fontsize=12)
 ax.axhline(y=0, color='black', linewidth=0.5)
 ax.axvline(x=0, color='black', linewidth=0.5)
 ax.grid(alpha=0.3, linestyle=":")
