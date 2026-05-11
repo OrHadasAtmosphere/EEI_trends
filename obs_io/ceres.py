@@ -1,6 +1,6 @@
 import os
 import xarray as xr
-from . import march_to_feb_years, add_weights, seasonal_means, to_trend
+from . import add_weights, march_to_feb_years, seasonal_means, to_trend
 from utils import global_mean, trend_and_ci
 
 SAVE_CERES_RAW = os.environ.get("SAVE_CERES_RAW", "False")
@@ -20,8 +20,9 @@ ds["lw_cre"] = ds.lw - ds.lw_clr
 ds["sw_cre"] = ds.sw - ds.sw_clr
 
 # proper years and weighting
-ds = march_to_feb_years(ds)
+ds = ds.sel(time=slice("2000-03-01", "2026-03-01"))
 ds = add_weights(ds)
+ds = march_to_feb_years(ds)
 ds = seasonal_means(ds)
 
 if SAVE_CERES_RAW:

@@ -2,7 +2,7 @@ import numpy as np
 import xarray as xr
 import xesmf as xe
 import pandas as pd
-from utils import add_weights
+from . import add_weights
 
 season_def = {
     "MAM":[3,4,5],
@@ -21,7 +21,7 @@ ds["omega500"] = ds.sel(pressure_level=500).w
 ds = ds.drop_vars(["pressure_level","number","expver","w"])
 
 # read SLP variance climatology
-slp = xr.open_mfdataset(["antiquated/output/SLP_var_yearly_OnlyTime.nc"])
+slp = xr.open_mfdataset(["raw_data/SLP_var.nc"])
 
 # make "year" and "month" into one "time" coord
 time = pd.to_datetime(
@@ -39,7 +39,7 @@ ds = regridder(ds)
 ds = xr.merge([ds,slp])
 
 # proper years and weighting
-ds = ds.sel(time=slice("1990-03-01", "2000-02-01"))
+ds = ds.sel(time=slice("1990-03-01", "2000-03-01"))
 ds = add_weights(ds)
 
 # make seasons
