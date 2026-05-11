@@ -31,12 +31,12 @@ hatches = {
     "residual": "..",
 }
 
-def plot_colormesh(ax, da, lim=color_range_for_trends, mask_and_val=(None, None)):
+def plot_colormesh(ax, da, lim=color_range_for_trends, mask_and_val=(None, None), cmap="bwr"):
     mask, val = mask_and_val
     if mask is not None:
         da = da.where(mask == val)
     return ax.pcolormesh(da.lon, da.lat, da, vmin=-lim, vmax=lim,
-                        cmap="bwr", transform=ccrs.PlateCarree())
+                        cmap=cmap, transform=ccrs.PlateCarree())
 
 def plot_coasts_grid(ax):
     ax.coastlines(lw=0.5)
