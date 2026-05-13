@@ -37,7 +37,7 @@ def eei_and_drivers_maps(eei, driver, savefile):
             Nlabel = f"{nicenames[varj]}{nicenames[vari]}"
             ax.set_title(letter[i,j]+") "+Nlabel+f" = {trend_gm:0.2f}", position=(0.35, 1.0))
     
-    plot_colorbar(fig, cf, "EEI Trend / W m$^{-2}$ dec$^{-1}$", [0.25, 0.38, 0.5, 0.02])
+    plot_colorbar(fig, cf, "EEI trend / W m$^{-2}$ dec$^{-1}$", [0.25, 0.38, 0.5, 0.02])
 
     letter = np.array(["g","h","i"])
     lim = [1, 2, 0.1]
