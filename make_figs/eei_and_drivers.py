@@ -7,7 +7,7 @@ from utils import global_mean
 from utils.plotting import central_lon, plot_colormesh, plot_coasts_grid, plot_colorbar
 
 nicenames = {
-    "net":"",
+    "net":"Net,",
     "lw":"LW,",
     "sw":"SW,",
     "_clr":"clr",
@@ -34,7 +34,7 @@ def eei_and_drivers_maps(eei, driver, savefile):
             cf = plot_colormesh(ax, t)
     
             plot_coasts_grid(ax)
-            Nlabel = fr"$N_\mathrm{{{nicenames[varj]}{nicenames[vari]}}}$"
+            Nlabel = f"{nicenames[varj]}{nicenames[vari]}"
             ax.set_title(letter[i,j]+") "+Nlabel+f" = {trend_gm:0.2f}", position=(0.35, 1.0))
     
     plot_colorbar(fig, cf, "EEI Trend / W m$^{-2}$ dec$^{-1}$", [0.25, 0.38, 0.5, 0.02])
