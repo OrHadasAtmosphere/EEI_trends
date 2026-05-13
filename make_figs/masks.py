@@ -54,7 +54,7 @@ for i,s in enumerate(["MAM","JJA","SON","DJF"]):
             collection.set_edgecolor(colors[name])
             collection.set_linewidth(0.0)  # remove polygon edges
     
-plot_colorbar(fig, cf, "EEI Trend / W m$^{-2}$ dec$^{-1}$", [0.25, -0.05, 0.5, 0.02])
+plot_colorbar(fig, cf, "Net EEI trend / W m$^{-2}$ dec$^{-1}$", [0.25, -0.05, 0.5, 0.02])
 plt.savefig("figures/eei_seasons_masks.png", dpi=300, facecolor="w", bbox_inches="tight")
 
 plt.figure(figsize=(6,4))
