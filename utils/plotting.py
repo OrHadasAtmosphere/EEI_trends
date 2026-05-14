@@ -13,10 +13,10 @@ colors = {
     "nh_cryosphere": "cyan",
     "subsidence_land": "yellow",
     "subsidence_ocean": "lime",
-    "tropical_ascent": "magenta",
+    "tropical_ascent": "purple",
     "sh_storms": "grey",
     "sh_cryosphere": "cyan",
-    "residual": "purple",
+    "residual": "darkorange",
 }
 
 # hatching per regime
