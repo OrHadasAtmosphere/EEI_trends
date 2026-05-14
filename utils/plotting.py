@@ -42,9 +42,9 @@ def plot_coasts_grid(ax):
     ax.coastlines(lw=0.5)
     ax.gridlines(draw_labels=False, linewidth=0.5, color='gray', linestyle=':')
 
-def plot_colorbar(fig, colormap, title, position, lim=color_range_for_trends):
+def plot_colorbar(fig, colormap, title, position, lim=color_range_for_trends, ori="horizontal"):
     cbar_ax = fig.add_axes(position)
-    return fig.colorbar(colormap, cax=cbar_ax, orientation='horizontal', label=title, extend="both", ticks = np.linspace(-lim,lim,5))
+    return fig.colorbar(colormap, cax=cbar_ax, orientation=ori, label=title, extend="both", ticks = np.linspace(-lim,lim,5))
 
 def edge_band(mask, n=2):
     """
