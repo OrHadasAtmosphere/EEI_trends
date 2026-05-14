@@ -15,7 +15,7 @@ def es(T):
 def qs(T, p):
     return eps * es(T) / (p - (1.0 - eps) * es(T))
 
-ds = xr.open_mfdataset(["raw_data/3D_RH.nc"])
+ds = xr.open_mfdataset(["raw_data/3D_RH.nc", "raw_data/3D_RH_2026.nc"])
 ds = ds.rename({"pressure_level":"plev"}).drop_vars(["number","expver"])
 
 # interpolate to mid points in logp
@@ -57,8 +57,7 @@ dp_da = xr.DataArray(
 wv_mass = ((q_mid * dp_da) / g).sum(dim="plev")
 sat_mass = ((qs_mid * dp_da) / g).sum(dim="plev")
 
-column_rh = wv_mass / sat_mass
-column_rh.name = "column_rh"
+column_rh = (wv_mass / sat_mass).rename("column_rh")
 column_rh.attrs = {
     "long_name": "Column Relative Humidity",
     "description": (
@@ -69,4 +68,24 @@ column_rh.attrs = {
     "units": "1",
 }
 
-column_rh.to_netcdf("raw_data/column_rh.nc")
+ds400 = ds.sel(plev=400, method="nearest")
+print(ds400)
+rh400 = (
+    ds400.q / qs(ds400.t, ds400.plev*100) # Pa
+).rename("rh400")
+rh400.attrs = {
+    "long_name": "Relative Humidity at 400 hPa",
+    "description": (
+        "Specific humidity(p400) / Saturation humidity(T400,p400)"
+    ),
+    "units": "1",
+}
+
+rh = xr.Dataset(
+    data_vars={
+        "column_rh": column_rh,
+        "rh400": rh400,
+    },
+).drop_vars(["plev"])
+
+rh.to_netcdf("raw_data/rh.nc")

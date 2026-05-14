@@ -24,7 +24,7 @@ ceres = xr.open_dataset("pp/ceres_trends.nc")
 ceres = ceres.sortby(["lat","lon"])
 
 # read era5 drivers
-ds = xr.open_mfdataset([inputs+"drivers_levels.nc", inputs+"drivers_pressures.nc", inputs+"drivers_levels_2026.nc", inputs+"drivers_pressures_2026.nc", inputs+"column_rh.nc"])
+ds = xr.open_mfdataset([inputs+"drivers_levels.nc", inputs+"drivers_pressures.nc", inputs+"drivers_levels_2026.nc", inputs+"drivers_pressures_2026.nc", inputs+"rh.nc"])
 ds = ds.rename({"valid_time":"time","latitude":"lat","longitude":"lon"})
 regridder = xe.Regridder(ds, ceres, method="bilinear")
 ds = regridder(ds)

@@ -1,8 +1,10 @@
 import numpy as np
 import xarray as xr
+import xesmf as xe
 import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
 
+from obs_io import add_weights, march_to_feb_years, seasonal_means, to_trend
 from utils.plotting import central_lon, plot_colormesh, plot_coasts_grid, plot_colorbar, colors, edge_band
 
 masks = xr.open_dataset("pp/regime_masks.nc")
@@ -11,33 +13,27 @@ mask_union = ta.any(dim="season")
 lon_vals = mask_union.lon.values
 lat_vals = mask_union.lat.values
 
-ceres = xr.open_mfdataset(["pp/ceres_trends.nc"]).sel(season="ANN")
-lwclr_trend = ceres.where(mask_union).lw_clr
-
-drivers_trends = xr.open_dataset('pp/era5_drivers_trends.nc').sel(season="ANN")
-tcw_trend = drivers_trends.where(mask_union).tcw
-crh_trend = drivers_trends.where(mask_union).column_rh
-crh_lwclr_trend = 0 # TODO
-
-weights = np.cos(np.deg2rad(lwclr_trend.lat))
-print(xr.corr(lwclr_trend, tcw_trend, dim=("lat","lon"), weights=weights).values)
-
+lw_clr_ceres = xr.open_dataset("pp/ceres_trends.nc").lw_clr.sel(season="ANN").where(mask_union)
+lw_clr_varRH = xr.open_dataset("pp/reconstructed_lwclr_trends.nc").lwclr_varRH.sel(season="ANN").where(mask_union)
 
 proj = ccrs.Robinson(central_longitude=central_lon)
 fig,axes = plt.subplots(2, 1, figsize=(6,4), subplot_kw={"projection":proj}, constrained_layout=True)
 
 ax = axes[0]
-p = plot_colormesh(ax, lwclr_trend)
+p = plot_colormesh(ax, lw_clr_ceres)
 plot_coasts_grid(ax)
 ax.set_extent([-180, 180, -45, 45],crs=ccrs.PlateCarree())
-ax.set_title("a) LW,clr EEI trend / W m$^{-2}$ dec$^{-1}$", loc="left")
+ax.set_title("a) CERES observed LW,clr", loc="left")
 
 ax = axes[1]
-p = plot_colormesh(ax, tcw_trend)
+p = plot_colormesh(ax, lw_clr_varRH)
 plot_coasts_grid(ax)
 ax.set_extent([-180, 180, -45, 45],crs=ccrs.PlateCarree())
-# ax.set_title("b) LW,clr EEI trend / W m$^{-2}$ dec$^{-1}$", loc="left") # TODO
-ax.set_title("b) tcw trend / kg m$^{-2}$ dec$^{-1}$", loc="left")
+ax.set_title("b) RH-component, reconstructed LW,clr", loc="left")
+
+weights = np.cos(np.deg2rad(lw_clr_varRH.lat))
+corr = xr.corr(lw_clr_ceres, lw_clr_varRH, dim=("lat","lon"), weights=weights).values
+ax.set_title("$r=$"+f"{corr:.2f}", loc="right")
 
 for ax in axes:
     ax.contourf(
@@ -48,6 +44,6 @@ for ax in axes:
         transform=ccrs.PlateCarree(),
     )
 
-plot_colorbar(fig, p, "", [0.2, -0.05, 0.6, 0.02])
+plot_colorbar(fig, p, "LW,clr EEI trend / W m$^{-2}$ dec$^{-1}$", [0.2, -0.05, 0.6, 0.02])
 
 plt.savefig("figures/clr_OLR.png", dpi=300, facecolor="w", bbox_inches="tight")
