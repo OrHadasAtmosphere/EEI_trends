@@ -14,6 +14,7 @@ nicenames = {
     "_cre":"CRE",
     "sst":"Sea surface temperature",
     "tcw":"Total column water vapor",
+    "column_rh":"Column relative humidity",
     "siconc":"Sea ice concentration",
 }
 
@@ -40,12 +41,18 @@ def eei_and_drivers_maps(eei, driver, savefile):
     plot_colorbar(fig, cf, "EEI trend / W m$^{-2}$ dec$^{-1}$", [0.25, 0.38, 0.5, 0.02])
 
     letter = np.array(["g","h","i"])
-    lim = [1, 2, 0.1]
-    unit = ["K", "kg m$^2$", "%"]
+    # vars = ["sst","tcw","siconc"]
+    # lim = [1, 2, 0.1]
+    # scale = [1, 1, 1]
+    # unit = ["K", "kg m$^2$", "%"]
+    vars = ["sst","column_rh","siconc"]
+    lim = [1, 4, 0.1]
+    scale = [1, 100, 1]
+    unit = ["K", "%", "%"]
     xbar = [1/6-0.1, 1/2-0.1, 5/6-0.1]
-    for i,vari  in enumerate(["sst","tcw","siconc"]):
+    for i,vari  in enumerate(vars):
         ax = axes[3,i]
-        p = plot_colormesh(ax, driver[vari], lim=lim[i], cmap="PRGn")
+        p = plot_colormesh(ax, driver[vari]*scale[i], lim=lim[i], cmap="PRGn")
         plot_coasts_grid(ax)
         ax.set_title(letter[i]+") "+nicenames[vari], position=(0.48, 1.0))
         plot_colorbar(fig, p, "Trend / "+unit[i]+" dec$^{-1}$", [xbar[i], -0.05, 0.2, 0.02], lim=lim[i])
