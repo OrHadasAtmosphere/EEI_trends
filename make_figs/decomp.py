@@ -29,6 +29,6 @@ ds_trend = xr.open_mfdataset(["pp/ceres_trends.nc"])
 da = ds_trend.sel(season="ANN").load()
 eei_maps(da, savefile="eei_trend_maps.png")
 
-for season in ["MAM","JJA","SON","DJF"]:
-    da = ds_trend.sel(season=season).load()
-    eei_maps(da, savefile=f"eei_trend_maps_{season}.png")
+# for season in ["MAM","JJA","SON","DJF"]:
+#     da = ds_trend.sel(season=season).load()
+#     eei_maps(da, savefile=f"eei_trend_maps_{season}.png")
