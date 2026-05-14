@@ -31,12 +31,12 @@ hatches = {
     "residual": "..",
 }
 
-def plot_colormesh(ax, da, lim=color_range_for_trends, mask_and_val=(None, None)):
+def plot_colormesh(ax, da, lim=color_range_for_trends, mask_and_val=(None, None), cmap="bwr"):
     mask, val = mask_and_val
     if mask is not None:
         da = da.where(mask == val)
     return ax.pcolormesh(da.lon, da.lat, da, vmin=-lim, vmax=lim,
-                        cmap="bwr", transform=ccrs.PlateCarree())
+                        cmap=cmap, transform=ccrs.PlateCarree())
 
 def plot_coasts_grid(ax):
     ax.coastlines(lw=0.5)
@@ -45,3 +45,19 @@ def plot_coasts_grid(ax):
 def plot_colorbar(fig, colormap, title, position, lim=color_range_for_trends):
     cbar_ax = fig.add_axes(position)
     return fig.colorbar(colormap, cax=cbar_ax, orientation='horizontal', label=title, extend="both", ticks = np.linspace(-lim,lim,5))
+
+def edge_band(mask, n=2):
+    """
+    n = thickness in grid cells
+    """
+    interior = mask.astype(bool)
+
+    for _ in range(n):
+        north = interior.shift(lat=-1, fill_value=False)
+        south = interior.shift(lat=1, fill_value=False)
+        east  = interior.roll(lon=-1, roll_coords=False)
+        west  = interior.roll(lon=1,  roll_coords=False)
+
+        interior = interior & north & south & east & west
+
+    return mask.astype(bool) & (~interior)

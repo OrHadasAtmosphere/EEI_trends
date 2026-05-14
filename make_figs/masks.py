@@ -4,12 +4,10 @@ import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 
 import matplotlib.patches as mpatches
-from matplotlib.patches import PathPatch
-from matplotlib.collections import PatchCollection
 
 from utils import global_mean
 from utils.plotting import plot_colormesh, plot_coasts_grid, plot_colorbar
-from utils.plotting import colors, hatches
+from utils.plotting import colors, hatches, edge_band
 
 
 net = xr.open_mfdataset(["pp/ceres_trends.nc"]).net.load()
@@ -17,22 +15,6 @@ masks = xr.open_dataset("pp/regime_masks.nc").load()
 
 regime_names = list(masks.data_vars)[:-1]
 letter = np.array(["a","b","c","d"])
-
-def edge_band(mask, n=2):
-    """
-    n = thickness in grid cells
-    """
-    interior = mask.astype(bool)
-
-    for _ in range(n):
-        north = interior.shift(lat=-1, fill_value=False)
-        south = interior.shift(lat=1, fill_value=False)
-        east  = interior.roll(lon=-1, roll_coords=False)
-        west  = interior.roll(lon=1,  roll_coords=False)
-
-        interior = interior & north & south & east & west
-
-    return mask.astype(bool) & (~interior)
 
 ######
 
@@ -72,65 +54,8 @@ for i,s in enumerate(["MAM","JJA","SON","DJF"]):
             collection.set_edgecolor(colors[name])
             collection.set_linewidth(0.0)  # remove polygon edges
     
-plot_colorbar(fig, cf, "EEI Trend / W m$^{-2}$ dec$^{-1}$", [0.25, -0.05, 0.5, 0.02])
+plot_colorbar(fig, cf, "Net EEI trend / W m$^{-2}$ dec$^{-1}$", [0.25, -0.05, 0.5, 0.02])
 plt.savefig("figures/eei_seasons_masks.png", dpi=300, facecolor="w", bbox_inches="tight")
-
-#####
-
-# fig,axes = plt.subplots(2, 2, figsize=(9.5,6), subplot_kw={"projection":ccrs.Robinson(central_longitude=-135)}, constrained_layout=True)
-# letter = np.array(["a","b","c","d"])
-
-# for i,s in enumerate(["MAM","JJA","SON","DJF"]):
-#     ax = axes.flatten()[i]
-#     da = net.sel(season=s)
-#     trend_gm = global_mean(da).values
-    
-#     cf = plot_colormesh(ax, da)
-#     plot_coasts_grid(ax)
-#     ax.set_title(letter[i]+") "+s+f" = {trend_gm:0.2f}", position=(0.35, 1.0))
-    
-# plot_colorbar(fig, cf, "EEI Trend / W m$^{-2}$ dec$^{-1}$", [0.25, -0.05, 0.5, 0.02])
-# plt.savefig("figures/eei_seasons.png", dpi=300, facecolor="w", bbox_inches="tight")
-
-# #####
-
-# fig,axes = plt.subplots(2, 2, figsize=(9.5,6), subplot_kw={"projection":ccrs.Robinson(central_longitude=-135)}, constrained_layout=True)
-
-# for i,s in enumerate(masks.season.values):
-#     ax = axes.flatten()[i]
-#     for name in regime_names:
-#         data = masks[name].sel(season=s).astype(int)
-#         band = edge_band(data, n=2)
-
-#         # 1. Colored boundary band (replaces contour)
-#         ax.contourf(
-#             data.lon, data.lat, band,
-#             levels=[0.5, 1],
-#             colors=[colors[name]],
-#             transform=ccrs.PlateCarree(),
-#         )
-
-#         # 2. Hatched regions with colored hatches
-#         cf = ax.contourf(
-#             data.lon, data.lat, data,
-#             levels=[0.5, 1],
-#             colors='none',
-#             hatches=[hatches[name]],
-#             transform=ccrs.PlateCarree(),
-#         )
-#         # trick to color the hatches
-#         for collection in ax.collections[-1:]:  # last contourf
-#             collection.set_edgecolor(colors[name])
-#             collection.set_linewidth(0.0)  # remove polygon edges
-
-#     ax.coastlines()
-#     ax.gridlines(draw_labels=False, linewidth=0.5, color='gray', linestyle=':')
-#     ax.set_title(letter[i]+") "+s, position=(0.35, 1.0))
-
-# plt.savefig("figures/seasons_masks.png", dpi=300, facecolor="w", bbox_inches="tight")
-
-
-#######
 
 plt.figure(figsize=(6,4))
 bottom = np.zeros(len(masks.season))

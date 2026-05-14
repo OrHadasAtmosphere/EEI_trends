@@ -11,6 +11,12 @@ colors = {
     "lw_clr": "#56B4E9",  # light blue (LW clear)
     "lw_cre": "#0072B2",  # dark blue (LW CRE)
 }
+nicenames = {
+    "sw_clr":"SW,clr",
+    "sw_cre":"SW,CRE",
+    "lw_clr":"LW,clr",
+    "lw_cre":"LW,CRE",
+}
 
 
 ds = xr.open_dataset("pp/regime_mean_trends.nc").sel(season=PLOT_SEASON)
@@ -21,7 +27,7 @@ ds = ds.sel(regime=[
 ])
 regimes = ds.regime.values
 
-for AREA_WEIGHT in [False, True]:
+for AREA_WEIGHT in [True, False]:
     if not AREA_WEIGHT:
         ds /= ds.area_fraction
 
@@ -50,7 +56,7 @@ for AREA_WEIGHT in [False, True]:
                     bottom=bottom_pos[i],
                     color=colors[key],
                     alpha=alpha_light + sig[i]*(1-alpha_light),
-                    label=key,
+                    label=nicenames[key],
                 )
 
                 ax.bar(x[i] - width/2, neg[i], width,
@@ -77,7 +83,7 @@ for AREA_WEIGHT in [False, True]:
     ax.set_xticklabels(rlabels, rotation=45, ha="right")
 
     if AREA_WEIGHT:
-        ax.set_ylabel("EEI trend area-weighted / W m$^{-2}$ dec$^{-1}$")
+        ax.set_ylabel("EEI trend, area-weighted / W m$^{-2}$ dec$^{-1}$")
     else:
         ax.set_ylabel("EEI trend / W m$^{-2}$ dec$^{-1}$")
     ax.axhline(0, color="k", linewidth=0.8)
