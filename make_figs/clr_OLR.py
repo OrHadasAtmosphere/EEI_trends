@@ -5,7 +5,8 @@ import matplotlib.pyplot as plt
 
 from utils.plotting import central_lon, plot_colormesh, plot_coasts_grid, plot_colorbar, colors, edge_band
 
-ta = xr.open_dataset("pp/regime_masks.nc").tropical_ascent
+masks = xr.open_dataset("pp/regime_masks.nc")
+ta = masks.tropical_ascent
 mask_union = ta.any(dim="season")
 lon_vals = mask_union.lon.values
 lat_vals = mask_union.lat.values
@@ -15,7 +16,11 @@ lwclr_trend = ceres.where(mask_union).lw_clr
 
 drivers_trends = xr.open_dataset('pp/era5_drivers_trends.nc').sel(season="ANN")
 tcw_trend = drivers_trends.where(mask_union).tcw
+crh_trend = drivers_trends.where(mask_union).column_rh
 crh_lwclr_trend = 0 # TODO
+
+weights = np.cos(np.deg2rad(lwclr_trend.lat))
+print(xr.corr(lwclr_trend, tcw_trend, dim=("lat","lon"), weights=weights).values)
 
 
 proj = ccrs.Robinson(central_longitude=central_lon)
