@@ -6,8 +6,8 @@ from scipy.ndimage import gaussian_filter
 # make regime masks
 ###
 
-infile = ["era5_clim.nc", "mask_clim_yrs/era5_clim_1995.nc", "mask_clim_yrs/era5_clim_2000.nc"]
-outfile = ["regime_masks.nc", "mask_clim_yrs/regime_masks_1995.nc", "mask_clim_yrs/regime_masks_2000.nc"]
+infile = ["era5_clim.nc", "diff_yrs/era5_clim_1995.nc", "diff_yrs/era5_clim_2000.nc"]
+outfile = ["regime_masks.nc", "diff_yrs/regime_masks_1995.nc", "diff_yrs/regime_masks_2000.nc"]
 
 for fin, fout in zip(infile, outfile):
 
