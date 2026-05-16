@@ -2,7 +2,7 @@ import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
-from utils.plotting import colors, hatches
+from utils.plotting import colors, hatches, hatches_legend
 
 ds = xr.open_dataset("pp/regime_mean_trends.nc")
 
@@ -94,18 +94,21 @@ for PLOT_VAR in ["net", "sw"]:
             Patch(
                 facecolor=colors[r],
                 edgecolor="k",
-                hatch=hatches.get(r, ""),
+                hatch=hatches_legend.get(r, ""),
                 alpha=1.0
             )
         )
+        r_formatted = r.replace('_',' ').replace("nh","NH").replace("sh","SH")
+        r_formatted = r_formatted[0].upper() + r_formatted[1:]
         legend_labels.append(
-            f"{r.replace('_',' ')} ({area_ann.sel(regime=r)*100:.0f}%)"
+            f"{r_formatted} ({area_ann.sel(regime=r)*100:.0f}%)"
         )
 
     ax.legend(
         legend_handles,
         legend_labels,
-        title="Regime",
+        handleheight=1.5,
+        title="Regime (area)",
         alignment="left",
         bbox_to_anchor=(1.02, 1.0),
         loc="upper left",
