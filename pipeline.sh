@@ -14,7 +14,7 @@ python -m obs_io.download_era5_drivers
 python -m obs_io.download_era5_masks
 
 echo "Processing CERES EBAF product to linear trends and global means"
-python -m obs_io.ceres SAVE_CERES_RAW=True # not working but hoping to go for a different setup anyway
+python -m obs_io.ceres
 
 echo "Processing ERA5 climatology to trends on CERES grid"
 python -m obs_io.process_era5clim
@@ -26,7 +26,7 @@ echo "Defining masks for dynamical regimes based on climatology"
 python -m obs_io.process_masks
 
 echo "Processing CERES EBAF trends over regimes"
-python -m obs_io.ceres SAVE_CERES_RAW=False
+python -m obs_io.ceres_regimes
 
 echo "Making plots"
 for fig in make_figs/*.py; do    

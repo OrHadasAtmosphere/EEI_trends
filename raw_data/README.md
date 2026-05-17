@@ -6,4 +6,4 @@ We use the CERES EBAF 4.2.1 product [described here](https://ceres.larc.nasa.gov
 
 #### OLR lookup table
 
-In our analysis of the LW clear-sky trends in regions of tropical ascent, we use the framework provided by [McKim et al 2021](https://doi.org/10.1029/2021GL094074). Clear-sky outgoing longwave radiation is estimated using a lookup table indexed by surface temperature and upper tropospheric relative humidity found [here](https://zenodo.org/records/5164050#.YQwWf1NKhZ1) titled `zenodo_olr.nc` but titled `OLR_table.nc` in our scripts.
+In our analysis of the tropical LW clear-sky trends, we use the clear-sky OLR look-up table from [McKim et al 2021](https://doi.org/10.1029/2021GL094074). This look-up table was constructed from line-by-line radiative transfer calculations using the PyRADS software for varying surface temperature and relative humidity, assuming a moist-adiabatic profile. The look-up table can be downloaded from [here](https://zenodo.org/records/5164050#.YQwWf1NKhZ1) titled `zenodo_olr.nc` but titled `OLR_table.nc` in our scripts.

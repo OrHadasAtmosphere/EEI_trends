@@ -2,7 +2,7 @@
 
 ![CI](https://github.com/OrHadasAtmosphere/EEI_trends/actions/workflows/test_pkg.yml/badge.svg)
 
-This repository supports a dynamical and process-by-process analysis of the observed steady increase in net EEI since the onset of the 21st century.
+This repository supports a decomposition of observed EEI trends into dynamical regimes and a process-based analysis of their origin.
 
 ## Environment Setup with conda/micromamba
 
