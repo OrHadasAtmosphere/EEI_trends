@@ -2,7 +2,7 @@
 
 ![CI](https://github.com/OrHadasAtmosphere/EEI_trends/actions/workflows/test_pkg.yml/badge.svg)
 
-This repository contains scripts to perform analyses and generate figures ... todo
+This repository supports a dynamical and process-by-process analysis of the observed steady increase in net EEI since the onset of the 21st century.
 
 ## Environment Setup with conda/micromamba
 
@@ -31,17 +31,7 @@ To run scripts using the modular structure used here, use the syntax:
 python -m module.script
 ```
 
-For instance, to generate `ceres_trends.nc` and `ceres_timeseries.nc` from the EBAF product, run
-```bash
-python -m obs_io.proper_ceres_seasons
-```
-
-Next, to generate figures, run (for instance)
-```bash
-python -m make_figs.figure_1_net_eei
-```
-
-The bash script `pipeline.sh` executes all necessary commands to pre-process CERES and ERA5 data and to generate figures. Run the code with
+Once the items described in [this README](raw_data/README.md) are downloaded to `raw_data/`, `pipeline.sh` executes all necessary commands to analyze data and to generate figures. You can run this with
 
 ```bash
 bash pipeline.sh
