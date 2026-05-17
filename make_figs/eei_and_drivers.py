@@ -15,7 +15,7 @@ nicenames = {
     "sst":"Sea surface temperature",
     "tcw":"Total column water vapor",
     "column_rh":"Column relative humidity",
-    "rh400":"Relative humidity @400 hPa",
+    "rh400":"Relative humidity (400 hPa)",
     "siconc":"Sea ice concentration",
 }
 
