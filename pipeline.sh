@@ -31,6 +31,13 @@ python -m obs_io.ceres_regimes
 echo "Making plots"
 for fig in make_figs/*.py; do    
     module_name=$(basename "$fig" .py)
+
+    # skip analysis of effect using of different subsets
+    # of CERES record and years of ERA5 on results
+    if [ "$module_name" = "diff_yrs" ]; then
+        echo "Skipping: $fig"
+        continue
+    fi
     
     echo "Running: python -m make_figs.$module_name"
     python -m make_figs.$module_name

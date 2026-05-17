@@ -67,7 +67,7 @@ for seas in season_def.keys():
     all.append(sub_mean)
 ds = xr.concat(all, dim="season")
 ds = ds.drop_vars(["days_in_month"])
-ds.to_netcdf("pp/era5_clim_1995.nc")
+ds.to_netcdf("pp/diff_yrs/era5_clim_1995.nc")
 
 ds = ds_full.sel(time=slice("2000-03-01", "2010-03-01"))
 ds = add_weights(ds)
@@ -79,4 +79,4 @@ for seas in season_def.keys():
     all.append(sub_mean)
 ds = xr.concat(all, dim="season")
 ds = ds.drop_vars(["days_in_month"])
-ds.to_netcdf("pp/era5_clim_2000.nc")
+ds.to_netcdf("pp/diff_yrs/era5_clim_2000.nc")

@@ -16,6 +16,7 @@ infile = ["diff_yrs/era5_clim_1995.nc", "diff_yrs/era5_clim_2000.nc"]
 outfile = ["diff_yrs/regime_masks_1995.nc", "diff_yrs/regime_masks_2000.nc"]
 
 for fin, fout in zip(infile, outfile):
+    print(f"defining regime masks from climatology in {infile}")
     regimes_from_clim(fin, fout)
 
 # calculate regime trends from sliced CERES record and from shifted ERA5 climatologies
