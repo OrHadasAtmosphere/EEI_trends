@@ -24,11 +24,14 @@ ds = ds.sel(time=slice("2000-03-01", "2026-03-01"))
 ds = add_weights(ds)
 ds = march_to_feb_years(ds)
 ds = seasonal_means(ds)
+slices = [slice(None, None), slice("2005", None), slice(None, "2021")]
 
 if SAVE_CERES_RAW:
-    # save linear trends
-    to_trend(ds).to_netcdf("pp/ceres_trends.nc")
-    print("done linear trend")
+    trendfiles = ["ceres_trends.nc", "diff_yrs/ceres_trends_from_2005.nc", "diff_yrs/ceres_trends_until_2021.nc"]
+    for slc, tfile in zip(slices, trendfiles):
+        # save linear trends
+        to_trend(ds.sel(year=slc)).to_netcdf(f"pp/{tfile}")
+        print(f"done linear trend: with CERES record cut using subselection {slc.start}-{slc.stop}")
 
     # save global-mean
     ds_gm = global_mean(ds).load()
@@ -37,16 +40,10 @@ if SAVE_CERES_RAW:
     ds_gm.close()
     gm_trend.close()
     print("done global-mean")
-
 else:
-    # save regime-mean trends
-    da = ds.drop_sel(season="ANN").drop_vars(["days_in_month"])
-
-    maskfile = ["regime_masks.nc", "regime_masks_1995.nc", "regime_masks_2000.nc"]
-    trendfile = ["regime_mean_trends.nc", "regime_mean_trends_1995.nc", "regime_mean_trends_2000.nc"]
-    
-    for fmask, fout in zip(maskfile, trendfile):
-        masks = xr.open_mfdataset(["pp/"+fmask])
+    def regime_trend(ds, mask_file, outfile):
+        da = ds.drop_sel(season="ANN").drop_vars(["days_in_month"])
+        masks = xr.open_mfdataset(["pp/"+mask_file])
         regimes = [r for r in masks.data_vars if r != "area"]
     
         # average over regimes
@@ -84,5 +81,20 @@ else:
     
         rm = rm.load()
         rm_trend = trend_and_ci(rm)
-        rm_trend.to_netcdf("pp/"+fout)
-        print("done regime-mean")
+        rm_trend.to_netcdf("pp/"+outfile)
+        print(f"done regime-mean: {outfile}")
+
+    fname_ext_per_slice = [".nc", "_using_ceres_from_2005.nc", "_using_ceres_until_2021.nc"]
+    for slc, nm_ext in zip(slices, fname_ext_per_slice):
+        parent_dir = "diff_yrs/" if nm_ext != ".nc" else ""
+        print(f"calculating regime trends for sliced CERES years: {slc.start}-{slc.stop}")
+        regime_trend(ds.sel(year=slc), "regime_masks.nc", f"{parent_dir}regime_mean_trends{nm_ext}")
+    
+    print("\ncalculating regime-mean trends using different climatologies to define regimes:")
+
+    for fmask, fout in zip(
+        ["diff_yrs/regime_masks_1995.nc", "diff_yrs/regime_masks_2000.nc"],
+        ["diff_yrs/regime_mean_trends_1995.nc", "diff_yrs/regime_mean_trends_2000.nc"]
+    ):
+        regime_trend(ds, fmask, fout)
+        

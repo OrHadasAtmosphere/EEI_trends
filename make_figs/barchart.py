@@ -2,24 +2,24 @@ import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
-from utils.plotting import colors, hatches
+from utils.plotting import colors, hatches, hatches_legend
 
-ds = xr.open_dataset("pp/regime_mean_trends.nc")
+def do_barchart(regime_trend_file="pp/regime_mean_trends.nc", PLOT_VAR="net", extra_fname="", out_subdir=""):
+    ds = xr.open_dataset(regime_trend_file)
 
-ds = ds.sel(season=[
-    "ANN","MAM","JJA","SON","DJF",
-])
+    ds = ds.sel(season=[
+        "ANN","MAM","JJA","SON","DJF",
+    ])
 
-area_ann = ds["area_fraction"].sel(season="ANN")
+    area_ann = ds["area_fraction"].sel(season="ANN")
 
-regimes = ds.regime.values
-seasons = ds.season.values
-x = np.arange(len(seasons))
-width = 0.5
-label_offset = 0.3
-light_alpha = 0.5
+    regimes = ds.regime.values
+    seasons = ds.season.values
+    x = np.arange(len(seasons))
+    width = 0.5
+    label_offset = 0.3
+    light_alpha = 0.5
 
-for PLOT_VAR in ["net", "sw"]:
     fig, ax = plt.subplots(figsize=(8,4))
 
     bottom_pos = np.zeros(len(seasons))
@@ -94,18 +94,21 @@ for PLOT_VAR in ["net", "sw"]:
             Patch(
                 facecolor=colors[r],
                 edgecolor="k",
-                hatch=hatches.get(r, ""),
+                hatch=hatches_legend.get(r, ""),
                 alpha=1.0
             )
         )
+        r_formatted = r.replace('_',' ').replace("nh","NH").replace("sh","SH")
+        r_formatted = r_formatted[0].upper() + r_formatted[1:]
         legend_labels.append(
-            f"{r.replace('_',' ')} ({area_ann.sel(regime=r)*100:.0f}%)"
+            f"{r_formatted} ({area_ann.sel(regime=r)*100:.0f}%)"
         )
 
     ax.legend(
         legend_handles,
         legend_labels,
-        title="Regime",
+        handleheight=1.5,
+        title="Regime (area)",
         alignment="left",
         bbox_to_anchor=(1.02, 1.0),
         loc="upper left",
@@ -127,5 +130,8 @@ for PLOT_VAR in ["net", "sw"]:
 
     plt.ylabel(f"{PLOT_VAR.upper()} EEI trend / W m$^{{-2}}$ dec$^{{-1}}$")
 
-    plt.savefig(f"figures/trend_barchart_{PLOT_VAR}.png",
+    plt.savefig(f"figures/{out_subdir}trend_barchart_{PLOT_VAR}{extra_fname}.png",
                 dpi=300, bbox_inches='tight')
+
+for var in ['net', 'sw']:
+    do_barchart(PLOT_VAR=var)

@@ -31,6 +31,18 @@ hatches = {
     "residual": "..",
 }
 
+# hatching for legend
+hatches_legend = {
+    "nh_storms": "//",
+    "sh_storms": "\\\\",
+    "nh_cryosphere": "//",
+    "sh_cryosphere": "\\\\",
+    "subsidence_land": "//",
+    "subsidence_ocean": "//",
+    "tropical_ascent": "\\\\",
+    "residual": "..",
+}
+
 def plot_colormesh(ax, da, lim=color_range_for_trends, mask_and_val=(None, None), cmap="bwr"):
     mask, val = mask_and_val
     if mask is not None:
