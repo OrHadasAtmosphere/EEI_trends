@@ -4,7 +4,6 @@ import xesmf as xe
 import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
 
-from obs_io import add_weights, march_to_feb_years, seasonal_means, to_trend
 from utils.plotting import central_lon, plot_colormesh, plot_coasts_grid, plot_colorbar, colors, edge_band
 
 masks = xr.open_dataset("pp/regime_masks.nc")
