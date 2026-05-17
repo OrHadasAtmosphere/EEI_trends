@@ -1,6 +1,8 @@
 import numpy as np
+import pandas as pd
 from scipy.ndimage import gaussian_filter
 import xarray as xr
+import xesmf as xe
 
 from utils import trend_and_ci
 
@@ -196,3 +198,36 @@ def regimes_from_clim(fin, fout):
     assert np.all(sum == 1), "Not all values are 1"
     
     masks.to_netcdf("pp/"+fout)
+
+def process_era5_clim():
+    ceres = xr.open_dataset("pp/ceres_trends.nc")
+    ceres = ceres.sortby(["lat","lon"])
+
+    # read ERA5 climatology
+    ds = xr.open_mfdataset(["raw_data/masks_levels.nc","raw_data/masks_pressures.nc"])
+    ds = ds.rename({"valid_time":"time","latitude":"lat","longitude":"lon"})
+    ds["omega500"] = ds.sel(pressure_level=500).w
+    ds = ds.drop_vars(["pressure_level","number","expver","w"])
+
+    # read SLP variance climatology
+    slp = xr.open_mfdataset(["raw_data/SLP_var.nc","raw_data/SLP_var_ext.nc"])
+
+    # make "year" and "month" into one "time" coord
+    time = pd.to_datetime(
+        [f"{y}-{m:02d}-01" for y in slp.year.values for m in slp.month.values]
+    )
+    slp = slp.stack(time=("year", "month"))
+    slp = slp.drop_vars(["year","month","time"])
+    slp = slp.assign_coords(time=time)
+
+    # wrap lon, regrid to same 1x1
+    regridder = xe.Regridder(slp, ceres, method="bilinear")
+    slp = regridder(slp)
+    wrapped = xr.concat([ds, ds.isel(lon=0)],dim="lon")
+    ds = wrapped.assign_coords(lon=list(ds.lon.values) + [ds.lon.values[0] + 360])
+    regridder = xe.Regridder(ds, ceres, method="bilinear")
+    ds = regridder(ds)
+    ds = xr.merge([ds,slp])
+
+    # add days-in-month weights
+    return add_weights(ds)

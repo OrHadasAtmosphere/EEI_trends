@@ -1,4 +1,5 @@
-from . import read_ceres, to_trend, regimes_from_clim, regime_trend
+from . import read_ceres, to_trend, regimes_from_clim, regime_trend, process_era5_clim
+from .process_era5clim import seasonal_clim
 
 ds = read_ceres()
 
@@ -10,6 +11,16 @@ for slc, tfile in zip(slices, trendfiles):
     # save linear trends
     to_trend(ds.sel(year=slc)).to_netcdf(f"pp/{tfile}")
     print(f"done linear trend: with CERES record cut using subselection {slc.start}-{slc.stop}")
+
+####
+# get seasonal climatology for ERA5 periods:
+####
+ds_full = process_era5_clim()
+for sl, out_ext in zip(
+    [slice("1995-03-01", "2005-03-01"), slice("2000-03-01", "2010-03-01")],
+    ["_1995", "_2000"]
+):
+    seasonal_clim(ds_full, sl, out_ext)
 
 # define regimes from different reference periods
 infile = ["diff_yrs/era5_clim_1995.nc", "diff_yrs/era5_clim_2000.nc"]
