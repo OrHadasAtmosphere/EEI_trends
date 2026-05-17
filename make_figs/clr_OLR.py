@@ -1,6 +1,5 @@
 import numpy as np
 import xarray as xr
-import xesmf as xe
 import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
 
