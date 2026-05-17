@@ -35,7 +35,7 @@ def do_barchart(regime_trend_file="pp/regime_mean_trends.nc", PLOT_VAR="net", ex
         neg = np.clip(values, None, 0)
 
         # need to loop for alpha
-        for i,xi in enumerate(x):
+        for i in x:
             bars_pos = ax.bar(x[i], pos[i], width,
                 bottom=bottom_pos[i],
                 color=colors[r],
