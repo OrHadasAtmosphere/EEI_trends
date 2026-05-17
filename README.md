@@ -39,6 +39,14 @@ bash pipeline.sh
 
 or simply execute the commands contained in the file at your leisure.
 
+```note
+The pipeline excludes all tasks related to altering the time periods used for analysis by
+    (1) removing the first and last five years of CERES data
+    (2) shifting the climatological period of ERA5 data used to define the dynamical regimes
+
+The infrastructure for these tasks is found under `diff_yrs` modules and subfolders.
+```
+
 ## For Windows users:
 
 Our dependency on `xesmf` unfortunately creates problems for Windows users causing our dependencies to be incompatible with your operating system.
