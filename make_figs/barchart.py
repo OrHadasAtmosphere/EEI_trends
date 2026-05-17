@@ -4,22 +4,22 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
 from utils.plotting import colors, hatches, hatches_legend
 
-ds = xr.open_dataset("pp/regime_mean_trends.nc")
+def do_barchart(regime_trend_file="pp/regime_mean_trends.nc", PLOT_VAR="net", extra_fname="", out_subdir=""):
+    ds = xr.open_dataset(regime_trend_file)
 
-ds = ds.sel(season=[
-    "ANN","MAM","JJA","SON","DJF",
-])
+    ds = ds.sel(season=[
+        "ANN","MAM","JJA","SON","DJF",
+    ])
 
-area_ann = ds["area_fraction"].sel(season="ANN")
+    area_ann = ds["area_fraction"].sel(season="ANN")
 
-regimes = ds.regime.values
-seasons = ds.season.values
-x = np.arange(len(seasons))
-width = 0.5
-label_offset = 0.3
-light_alpha = 0.5
+    regimes = ds.regime.values
+    seasons = ds.season.values
+    x = np.arange(len(seasons))
+    width = 0.5
+    label_offset = 0.3
+    light_alpha = 0.5
 
-for PLOT_VAR in ["net", "sw"]:
     fig, ax = plt.subplots(figsize=(8,4))
 
     bottom_pos = np.zeros(len(seasons))
@@ -130,5 +130,8 @@ for PLOT_VAR in ["net", "sw"]:
 
     plt.ylabel(f"{PLOT_VAR.upper()} EEI trend / W m$^{{-2}}$ dec$^{{-1}}$")
 
-    plt.savefig(f"figures/trend_barchart_{PLOT_VAR}.png",
+    plt.savefig(f"figures/{out_subdir}trend_barchart_{PLOT_VAR}{extra_fname}.png",
                 dpi=300, bbox_inches='tight')
+
+for var in ['net', 'sw']:
+    do_barchart(PLOT_VAR=var)
