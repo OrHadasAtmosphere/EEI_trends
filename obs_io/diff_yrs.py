@@ -1,7 +1,10 @@
-from . import read_ceres, to_trend, regimes_from_clim, regime_trend, process_era5_clim
-from .process_era5clim import seasonal_clim
+from . import to_trend
+from .ceres import read_ceres_raw
+from .ceres_regimes import regime_trend
+from .process_regimes import regimes_from_clim
+from .process_era5clim import process_era5_clim, seasonal_clim
 
-ds = read_ceres()
+ds = read_ceres_raw()
 
 slices = [slice("2005", None), slice(None, "2021")]
 
