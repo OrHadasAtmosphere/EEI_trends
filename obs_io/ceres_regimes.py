@@ -1,7 +1,6 @@
 import xarray as xr
-
+from utils import trend_and_ci
 from .ceres import read_ceres_raw
-from . import trend_and_ci
 
 def regime_trend(ds, mask_file, outfile):
     da = ds.drop_sel(season="ANN").drop_vars(["days_in_month"])

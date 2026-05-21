@@ -1,8 +1,5 @@
 import numpy as np
-import pandas as pd
 import xarray as xr
-
-from utils import trend_and_ci
 
 def add_weights(ds):
     weights = ds.time.dt.days_in_month
