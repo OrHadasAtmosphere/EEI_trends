@@ -6,6 +6,8 @@ import xesmf as xe
 from obs_io import add_weights, march_to_feb_years, seasonal_means
 from obs_io.clrsky_helper import T_strat, get_gammaLR, get_Trad_total, OLR_from_Tem
 
+RH400 = False
+
 # load ERA5-drivers
 ceres = xr.open_mfdataset(["pp/ceres_trends.nc"]).sel(season="ANN")
 drivers = xr.open_mfdataset(["raw_data/drivers_levels.nc", "raw_data/drivers_levels_2026.nc", "raw_data/rh.nc"])
@@ -19,8 +21,11 @@ drivers = drivers.chunk({
     "lat": 20,
     "lon": 20,
 })
-skin = drivers.skt
-rh400 = drivers.rh400
+ts = drivers.skt
+if RH400 == True:
+    rh = drivers.rh400
+else:
+    rh = drivers.column_rh
 del regridder, ceres, drivers
 
 # load CO2
@@ -48,8 +53,8 @@ nu_da = xr.DataArray(
     attrs={"units": "cm^-1"},
 )
 
-meanTs = add_weights(skin).weighted(skin.days_in_month).mean("time").persist()
-meanRH = add_weights(rh400).weighted(rh400.days_in_month).mean("time").persist()
+meanTs = add_weights(ts).weighted(ts.days_in_month).mean("time").persist()
+meanRH = add_weights(rh).weighted(rh.days_in_month).mean("time").persist()
 meanco2 = add_weights(co2).weighted(co2.days_in_month).mean("time").persist()
 
 def to_trend(ds):
@@ -79,8 +84,8 @@ del gammaLR, Tem, OLR_co2
 print(lwclr_varco2)
 
 # Ts-only
-gammaLR = get_gammaLR(skin, T_strat)
-Tem = get_Trad_total(nu_da, skin, T_strat, gammaLR, meanRH, meanco2)
+gammaLR = get_gammaLR(ts, T_strat)
+Tem = get_Trad_total(nu_da, ts, T_strat, gammaLR, meanRH, meanco2)
 OLR_Ts = OLR_from_Tem(nu_da, Tem)
 
 lwclr_varTs = olr_timeseries_to_lwclr_trend(OLR_Ts.to_dataset(name="olr")).rename("lwclr_varTs").compute()
@@ -95,7 +100,7 @@ print(lwclr_varTs)
 
 # RH-only
 gammaLR = get_gammaLR(meanTs, T_strat)
-Tem = get_Trad_total(nu_da, meanTs, T_strat, gammaLR, rh400, meanco2)
+Tem = get_Trad_total(nu_da, meanTs, T_strat, gammaLR, rh, meanco2)
 OLR_RH = OLR_from_Tem(nu_da, Tem)
 
 lwclr_varRH = olr_timeseries_to_lwclr_trend(OLR_RH.to_dataset(name="olr")).rename("lwclr_varRH").compute()
@@ -109,8 +114,8 @@ del gammaLR, Tem, OLR_RH
 print(lwclr_varRH)
 
 # all together
-gammaLR = get_gammaLR(skin, T_strat)
-Tem = get_Trad_total(nu_da, skin, T_strat, gammaLR, rh400, co2)
+gammaLR = get_gammaLR(ts, T_strat)
+Tem = get_Trad_total(nu_da, ts, T_strat, gammaLR, rh, co2)
 OLR_all = OLR_from_Tem(nu_da, Tem)
 
 lwclr_all = olr_timeseries_to_lwclr_trend(OLR_all.to_dataset(name="olr")).rename("lwclr_all").compute()
@@ -138,5 +143,8 @@ out.attrs = {
     )
 }
 print(out)
-out.to_netcdf("pp/analytic_lwclr_trends.nc")
+if RH400 == True:
+    out.to_netcdf("pp/analytic_lwclr_trends_wRH400.nc")
+else:
+    out.to_netcdf("pp/analytic_lwclr_trends_wCRH.nc")
 
