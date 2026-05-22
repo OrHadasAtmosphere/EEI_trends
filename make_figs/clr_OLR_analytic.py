@@ -16,7 +16,9 @@ lat_vals = mask_union.lat.values
 lw_clr_ceres = xr.open_dataset("pp/ceres_trends.nc").lw_clr.sel(season="ANN").where(mask_union)
 rh_trends = xr.open_dataset("pp/era5_drivers_trends.nc").rh400.sel(season="ANN").where(mask_union)
 
-reconstruct = xr.open_dataset("pp/analytic_lwclr_trends_wRH400.nc")
+rh_var = "crh_600_400" # "rh400", "rh500", "crh_1000_300", "crh_800_300", "crh_600_400"
+
+reconstruct = xr.open_dataset("pp/analytic_lwclr_trends_"+rh_var+".nc")
 lw_clr_varRH = reconstruct.lwclr_varRH.sel(season="ANN").where(mask_union)
 lw_clr_varTs = reconstruct.lwclr_varTs.sel(season="ANN").where(mask_union)
 lw_clr_varco2 = reconstruct.lwclr_varco2.sel(season="ANN").where(mask_union)
@@ -39,7 +41,7 @@ ax = axes[1,0]
 p = plot_colormesh(ax, lw_clr_varRH, lim=clim)
 plot_coasts_grid(ax)
 ax.set_extent([-180, 180, -45, 45],crs=ccrs.PlateCarree())
-ax.set_title("b) RH-component, analytic", loc="left")
+ax.set_title("c) RH-component, analytic", loc="left")
 corr = xr.corr(lw_clr_ceres, lw_clr_varRH, dim=("lat","lon"), weights=weights).values
 mean = lw_clr_varRH.mean("lon").weighted(weights).mean("lat").values
 ax.set_title("mean$=$"+f"{mean:.2f}"+", $r=$"+f"{corr:.2f}", loc="right")
@@ -48,7 +50,7 @@ ax = axes[2,0]
 p = plot_colormesh(ax, lw_clr_varTs, lim=clim)
 plot_coasts_grid(ax)
 ax.set_extent([-180, 180, -45, 45],crs=ccrs.PlateCarree())
-ax.set_title("c) $T_s$-component, analytic", loc="left")
+ax.set_title("e) $T_s$-component, analytic", loc="left")
 corr = xr.corr(lw_clr_ceres, lw_clr_varTs, dim=("lat","lon"), weights=weights).values
 mean = lw_clr_varTs.mean("lon").weighted(weights).mean("lat").values
 ax.set_title("mean$=$"+f"{mean:.2f}"+", $r=$"+f"{corr:.2f}", loc="right")
@@ -57,7 +59,7 @@ ax = axes[0,1]
 p = plot_colormesh(ax, lw_clr_tot, lim=clim)
 plot_coasts_grid(ax)
 ax.set_extent([-180, 180, -45, 45],crs=ccrs.PlateCarree())
-ax.set_title("e) RH & $T_s$ & CO$_2$, analytic", loc="left")
+ax.set_title("b) RH & $T_s$ & CO$_2$, analytic", loc="left")
 corr = xr.corr(lw_clr_ceres, lw_clr_tot, dim=("lat","lon"), weights=weights).values
 mean = lw_clr_tot.mean("lon").weighted(weights).mean("lat").values
 ax.set_title("mean$=$"+f"{mean:.2f}"+", $r=$"+f"{corr:.2f}", loc="right")
@@ -92,4 +94,4 @@ for ax in axes.flatten():
 
 plot_colorbar(fig, p, "LW,clr EEI trend / W m$^{-2}$ dec$^{-1}$", [0.3, -0.05, 0.4, 0.02], lim=clim)
 
-plt.savefig("figures/clr_OLR_analytic.png", dpi=300, facecolor="w", bbox_inches="tight")
+plt.savefig("figures/clr_OLR_analytic_"+rh_var+".png", dpi=300, facecolor="w", bbox_inches="tight")

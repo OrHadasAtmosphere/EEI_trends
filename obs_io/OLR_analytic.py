@@ -3,10 +3,12 @@ import xarray as xr
 import pandas as pd
 import xesmf as xe
 
+np.seterr(divide="ignore", invalid="ignore")
+
 from obs_io import add_weights, march_to_feb_years, seasonal_means
 from obs_io.clrsky_helper import T_strat, get_gammaLR, get_Trad_total, OLR_from_Tem
 
-RH400 = False
+rh_var = "crh_600_400" # "rh400", "rh500", "crh_1000_300", "crh_800_300", "crh_600_400"
 
 # load ERA5-drivers
 ceres = xr.open_mfdataset(["pp/ceres_trends.nc"]).sel(season="ANN")
@@ -22,10 +24,7 @@ drivers = drivers.chunk({
     "lon": 20,
 })
 ts = drivers.skt
-if RH400 == True:
-    rh = drivers.rh400
-else:
-    rh = drivers.column_rh
+rh = drivers[rh_var]
 del regridder, ceres, drivers
 
 # load CO2
@@ -81,7 +80,7 @@ lwclr_varco2.attrs = {
     "units": "W m-2 decade-1",
 }
 del gammaLR, Tem, OLR_co2
-print(lwclr_varco2)
+print("done co2")
 
 # Ts-only
 gammaLR = get_gammaLR(ts, T_strat)
@@ -96,7 +95,7 @@ lwclr_varTs.attrs = {
     "units": "W m-2 decade-1",
 }
 del gammaLR, Tem, OLR_Ts
-print(lwclr_varTs)
+print("done Ts")
 
 # RH-only
 gammaLR = get_gammaLR(meanTs, T_strat)
@@ -111,7 +110,7 @@ lwclr_varRH.attrs = {
     "units": "W m-2 decade-1",
 }
 del gammaLR, Tem, OLR_RH
-print(lwclr_varRH)
+print("done rh")
 
 # all together
 gammaLR = get_gammaLR(ts, T_strat)
@@ -126,7 +125,7 @@ lwclr_all.attrs = {
     "units": "W m-2 decade-1",
 }
 del gammaLR, Tem, OLR_all
-print(lwclr_all)
+print("done all")
 
 # output
 out = xr.Dataset({
@@ -143,8 +142,5 @@ out.attrs = {
     )
 }
 print(out)
-if RH400 == True:
-    out.to_netcdf("pp/analytic_lwclr_trends_wRH400.nc")
-else:
-    out.to_netcdf("pp/analytic_lwclr_trends_wCRH.nc")
+out.to_netcdf("pp/analytic_lwclr_trends_"+rh_var+".nc")
 
