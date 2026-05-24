@@ -54,7 +54,7 @@ for v in regime_names:
     r_formatted = r_formatted[0].upper() + r_formatted[1:] if r_formatted[0] != " " else r_formatted[1].upper() + r_formatted[2:]
     patch = mpatches.Patch(
         facecolor=colors[v],
-        alpha=0.2,
+        alpha=0.4,
         edgecolor='black',  # optional: outlines the patch
     )
     # update removing duplicates
