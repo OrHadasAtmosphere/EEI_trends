@@ -6,8 +6,8 @@ import cartopy.crs as ccrs
 import matplotlib.patches as mpatches
 
 from utils import global_mean
-from utils.plotting import plot_colormesh, plot_coasts_grid, plot_colorbar
-from utils.plotting import colors, hatches, edge_band
+from utils.plotting import plot_coasts_grid
+from utils.plotting import colors, hatches, edge_band, hatches_legend
 
 
 net = xr.open_mfdataset(["pp/ceres_trends.nc"]).net.load()
@@ -25,14 +25,13 @@ for i,s in enumerate(["MAM","JJA","SON","DJF"]):
     da = net.sel(season=s)
     trend_gm = global_mean(da).values
     
-    cf = plot_colormesh(ax, da)
+    # cf = plot_colormesh(ax, da)
     plot_coasts_grid(ax)
     ax.set_title(letter[i]+") "+s+f" = {trend_gm:0.2f}", position=(0.35, 1.0))
 
     for name in regime_names:
         data = masks[name].sel(season=s).astype(int)
         band = edge_band(data, n=2)
-
         # 1. Colored boundary band (replaces contour)
         ax.contourf(
             data.lon, data.lat, band,
@@ -40,21 +39,14 @@ for i,s in enumerate(["MAM","JJA","SON","DJF"]):
             colors=[colors[name]],
             transform=ccrs.PlateCarree(),
         )
-
-        # 2. Hatched regions with colored hatches
         ax.contourf(
             data.lon, data.lat, data,
             levels=[0.5, 1],
-            colors='none',
-            hatches=[hatches[name]],
+            colors=[colors[name]],
             transform=ccrs.PlateCarree(),
+            alpha=0.2,
         )
-        # trick to color the hatches
-        for collection in ax.collections[-1:]:  # last contourf
-            collection.set_edgecolor(colors[name])
-            collection.set_linewidth(0.0)  # remove polygon edges
     
-plot_colorbar(fig, cf, "Net EEI trend / W m$^{-2}$ dec$^{-1}$", [0.25, -0.05, 0.5, 0.02])
 plt.savefig("figures/eei_seasons_masks.png", dpi=300, facecolor="w", bbox_inches="tight")
 
 
@@ -72,12 +64,14 @@ for v in regime_names:
 # Create legend with colored + hatched patches
 legend_handles = []
 for v in regime_names:
+    r_formatted = v.replace('_',' ').replace("nh","NH").replace("sh","SH")
+    r_formatted = r_formatted[0].upper() + r_formatted[1:]
     patch = mpatches.Patch(
         facecolor=colors[v],
         alpha=0.7,
-        hatch=hatches[v],
+        hatch=hatches_legend[v],
         edgecolor='black',  # optional: outlines the patch
-        label=v
+        label=r_formatted,
     )
     legend_handles.append(patch)
 plt.legend(handles=legend_handles, loc=(1,0.5))
