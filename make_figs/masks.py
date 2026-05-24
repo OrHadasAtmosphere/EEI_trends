@@ -7,7 +7,7 @@ import matplotlib.patches as mpatches
 
 from utils import global_mean
 from utils.plotting import plot_coasts_grid
-from utils.plotting import colors, hatches, edge_band, hatches_legend
+from utils.plotting import colors, hatches, edge_band, hatches_legend, central_lon
 
 
 net = xr.open_mfdataset(["pp/ceres_trends.nc"]).net.load()
@@ -18,7 +18,7 @@ letter = np.array(["a","b","c","d"])
 
 ######
 
-fig,axes = plt.subplots(2, 2, figsize=(9.5,6), subplot_kw={"projection":ccrs.Robinson(central_longitude=-135)}, constrained_layout=True)
+fig,axes = plt.subplots(2, 2, figsize=(9.5,6), subplot_kw={"projection":ccrs.Robinson(central_longitude=central_lon)}, constrained_layout=True)
 
 for i,s in enumerate(["MAM","JJA","SON","DJF"]):
     ax = axes.flatten()[i]
@@ -46,6 +46,29 @@ for i,s in enumerate(["MAM","JJA","SON","DJF"]):
             transform=ccrs.PlateCarree(),
             alpha=0.2,
         )
+
+legend_handles = []
+legend_labels = []
+for v in regime_names:
+    r_formatted = v.replace('_',' ').replace("nh","").replace("sh","")
+    r_formatted = r_formatted[0].upper() + r_formatted[1:] if r_formatted[0] != " " else r_formatted[1].upper() + r_formatted[2:]
+    patch = mpatches.Patch(
+        facecolor=colors[v],
+        alpha=0.2,
+        edgecolor='black',  # optional: outlines the patch
+    )
+    # update removing duplicates
+    if r_formatted not in legend_labels:
+        legend_handles.append(patch)
+        legend_labels.append(r_formatted)
+fig.legend(
+    handles=legend_handles,
+    labels=legend_labels,
+    ncol=3,
+    loc='upper center',
+    bbox_to_anchor=(0.5, -0.01),
+    bbox_transform=fig.transFigure  # Use figure coordinates
+)
     
 plt.savefig("figures/eei_seasons_masks.png", dpi=300, facecolor="w", bbox_inches="tight")
 
