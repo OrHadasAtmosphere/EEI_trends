@@ -1,16 +1,14 @@
 import numpy as np
-import xarray as xr
 from scipy.ndimage import gaussian_filter
+import xarray as xr
+
 
 ### 
 # make regime masks
+# (1990-2000 climatology)
 ###
 
-infile = ["era5_clim.nc", "diff_yrs/era5_clim_1995.nc", "diff_yrs/era5_clim_2000.nc"]
-outfile = ["regime_masks.nc", "diff_yrs/regime_masks_1995.nc", "diff_yrs/regime_masks_2000.nc"]
-
-for fin, fout in zip(infile, outfile):
-
+def regimes_from_clim(fin, fout):
     ds = xr.open_dataset("pp/"+fin)
     
     # define masks
@@ -104,3 +102,5 @@ for fin, fout in zip(infile, outfile):
     assert np.all(sum == 1), "Not all values are 1"
     
     masks.to_netcdf("pp/"+fout)
+
+regimes_from_clim("era5_clim.nc", "regime_masks.nc")
