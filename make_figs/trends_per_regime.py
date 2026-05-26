@@ -104,5 +104,3 @@ def do_regime_trend_barchart(regime_trends="pp/regime_mean_trends.nc", extra_fna
                     dpi=300, bbox_inches='tight')
             
 do_regime_trend_barchart()
-for yr_chng in ["_using_ceres_from_2005", "_using_ceres_until_2021"]:
-    do_regime_trend_barchart(f"pp/diff_yrs/regime_mean_trends{yr_chng}.nc", extra_fname=yr_chng, out_subdir="diff_yrs/")
