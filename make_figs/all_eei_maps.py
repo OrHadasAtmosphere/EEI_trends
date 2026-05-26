@@ -16,6 +16,7 @@ nicenames = {
 }
 
 def eei_maps(da, savefile):
+    plt.rcParams.update({'font.size': 22})
     fig,axes = plt.subplots(6, 4, figsize=(20,18), subplot_kw={"projection":ccrs.Robinson(central_longitude=-135)}, constrained_layout=True)
     letter = np.array([
         ["a", "b", "c", "d"],
@@ -34,14 +35,16 @@ def eei_maps(da, savefile):
             cf = plot_colormesh(ax, t)
     
             plot_coasts_grid(ax)
-            ax.set_title(letter[j,i]+") "+f"{trend_gm:0.2f}", position=(0.32, 1.0))
+            ax.set_title(letter[j,i]+") "+f"{trend_gm:0.2f}", position=(0.32, 1.0), fontsize=18)
 
             if j == 0:
-                ax.annotate(seasoni, xy=(0.5, 1.2), xycoords="axes fraction", ha="center", va="center", fontsize=16, fontweight="bold")
+                ax.annotate(seasoni, xy=(0.5, 1.25), xycoords="axes fraction", ha="center", va="center", fontweight="bold")
             if i == 0:
-                ax.annotate(nicenames[varj], xy=(-0.05, 0.5), xycoords="axes fraction", rotation=90, ha="center", va="center", fontsize=16, fontweight="bold")
+                ax.annotate(nicenames[varj], xy=(-0.05, 0.5), xycoords="axes fraction", rotation=90, ha="center", va="center", fontweight="bold")
     
-    plot_colorbar(fig, cf, "EEI trend / W m$^{-2}$ dec$^{-1}$", [0.3, -0.02, 0.4, 0.01])
+    cb = plot_colorbar(fig, cf, "EEI trend / W m$^{-2}$ dec$^{-1}$", [0.3, -0.03, 0.4, 0.01])
+    # cb.set_label("EEI trend / W m$^{-2}$ dec$^{-1}$", fontsize=14)
+    # cb.ax.tick_params(labelsize=14)
     plt.savefig("figures/"+savefile, dpi=300, facecolor="w", bbox_inches="tight")
 
 
