@@ -15,7 +15,7 @@ lat_vals = mask_union.lat.values
 
 lw_clr_ceres = xr.open_dataset("pp/ceres_trends.nc").lw_clr.sel(season="ANN").where(mask_union)
 
-rh_var = "crh_600_400" # "rh400", "rh500", "crh_1000_300", "crh_800_300", "crh_600_400"
+rh_var = "crh_600_400"
 
 reconstruct = xr.open_dataset("pp/analytic_lwclr_trends_"+rh_var+".nc")
 lw_clr_varRH = reconstruct.lwclr_varRH.sel(season="ANN").where(mask_union)

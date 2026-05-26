@@ -8,7 +8,7 @@ np.seterr(divide="ignore", invalid="ignore")
 from obs_io import add_weights, march_to_feb_years, seasonal_means
 from obs_io.clrsky_helper import T_strat, get_gammaLR, get_Trad_total, OLR_from_Tem
 
-rh_var = "crh_600_400" # "rh400", "rh500", "crh_1000_300", "crh_800_300", "crh_600_400"
+rh_var = "crh_600_400"
 
 # load ERA5-drivers
 ceres = xr.open_mfdataset(["pp/ceres_trends.nc"]).sel(season="ANN")
