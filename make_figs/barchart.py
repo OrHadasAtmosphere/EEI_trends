@@ -136,5 +136,13 @@ def do_barchart(regime_trend_file="pp/regime_mean_trends.nc", PLOT_VAR="net", ex
     plt.savefig(f"figures/{out_subdir}trend_barchart_{PLOT_VAR}{extra_fname}.png",
                 dpi=300, bbox_inches='tight')
 
+    if PLOT_VAR == "net":
+        print(seasons)
+        for r in regimes:
+            print(r)
+            values = ds.sel(regime=r)[PLOT_VAR+"_slope_mean"].values
+            ci = ds.sel(regime=r)[PLOT_VAR+"_slope_ci"].values
+            print([f"{v:.2f} ± {c:.2f}" for v, c in zip(values, ci)])
+
 for var in ['net', 'sw']:
     do_barchart(PLOT_VAR=var)
