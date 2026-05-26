@@ -14,7 +14,6 @@ lon_vals = mask_union.lon.values
 lat_vals = mask_union.lat.values
 
 lw_clr_ceres = xr.open_dataset("pp/ceres_trends.nc").lw_clr.sel(season="ANN").where(mask_union)
-rh_trends = xr.open_dataset("pp/era5_drivers_trends.nc").rh400.sel(season="ANN").where(mask_union)
 
 rh_var = "crh_600_400" # "rh400", "rh500", "crh_1000_300", "crh_800_300", "crh_600_400"
 

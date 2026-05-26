@@ -16,6 +16,7 @@ nicenames = {
     "tcw":"Total column water vapor",
     "column_rh":"Column relative humidity",
     "rh400":"Relative humidity (400 hPa)",
+    "crh_600_400":"Relative humidity",
     "siconc":"Sea ice concentration",
 }
 
@@ -46,7 +47,7 @@ def eei_and_drivers_maps(eei, driver, savefile):
     # lim = [1, 2, 0.1]
     # scale = [1, 1, 1]
     # unit = ["K", "kg m$^2$", "%"]
-    vars = ["sst","rh400","siconc"]
+    vars = ["sst","crh_600_400","siconc"]
     lim = [1, 4, 0.1]
     scale = [1, 100, 1]
     unit = ["K", "%", "%"]
