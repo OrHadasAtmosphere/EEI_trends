@@ -10,8 +10,8 @@ echo "Installing tools"
 pip install .
 
 echo "Downloading ERA5 data"
-python -m obs_io.download_era5_drivers
-python -m obs_io.download_era5_regimes
+python -m obs_io.era5_drivers
+python -m obs_io.era5_masks
 
 echo "Processing CERES EBAF product to linear trends and global means"
 python -m obs_io.ceres
@@ -23,7 +23,7 @@ echo "Processing drivers to trends on CERES grind"
 python -m obs_io.process_drivers
 
 echo "Defining masks for dynamical regimes based on climatology"
-python -m obs_io.process_regimes
+python -m obs_io.process_masks
 
 echo "Processing CERES EBAF trends over regimes"
 python -m obs_io.ceres_regimes
