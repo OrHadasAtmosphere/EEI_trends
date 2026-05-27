@@ -1,0 +1,36 @@
+name: run processing pipeline
+on: [pull_request] # NOTE: running here for testing purposes
+
+jobs:
+  test:
+    name: Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+      fail-fast: false 
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: download CERES
+        run: |
+          curl -fL https://ceres-tool.larc.nasa.gov/ord-tool/user/DATA/2026-05-27_08-22-32.638376/CERES_EBAF-TOA_Ed4.2.1_Subset_200003-202602.nc --output raw_data/CERES_EBAF-TOA_Ed4.2.1_Subset_200003-202602.nc || exit 1
+
+      - name: download OLR
+        run: |
+          curl -fL https://zenodo.org/records/5164050/files/zenodo_olr.nc?download=1 raw_data/OLR_table.nc || exit 1
+
+      - name: run pipeline
+        run: |
+          bash pipeline.sh
+
+      - name: Upload outputs (stay for 90 days in 'Actions' tab)
+        uses: actions/upload-artifact@v4
+        with:
+          name: pipeline-outputs
+          path: |
+            **/*.png
+      
+      - name: clean up
+        if: always()
+        run: rm -rf raw_data/*.nc
