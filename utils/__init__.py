@@ -8,22 +8,8 @@ def lat_mean(ds):
 def global_mean(ds):
     return lat_mean(ds.mean("lon"))
 
-def trend_and_ci(ds, dim="time", alpha=0.05, vars=None):
-    
-    if isinstance(vars, str):
-        vars = [vars]
-    
-    if vars is None:
-        vars = [v for v in ds.data_vars if ds[v].dtype in [np.float32, np.float64]]
-    
-    if dim not in ds.dims:
-        for potential_dim in ['time', 'year', 'month']:
-            if potential_dim in ds.dims:
-                dim = potential_dim
-                break
-        else:
-            raise ValueError(f"Dimension '{dim}' not found in dataset. Available: {list(ds.dims)}")
-    
+def trend_and_ci(ds, dim="year", alpha=0.05, vars=["net","net_clr","net_cre","sw","sw_clr","sw_cre","lw","lw_clr","lw_cre"]):
+
     def linregress_1d(y, x):
         res = stats.linregress(x, y)
         fit = res.intercept + res.slope * x
