@@ -70,8 +70,8 @@ map_ax.set_extent([central_lon - 180, central_lon + 180, -60, 60], crs=ccrs.Plat
 
 # - main plot: - 
 
-ax.set_xlabel("SST Trend / Kdec$^{-1}$")
-ax.set_ylabel( "Net CRE Trend / Wm$^{-2}$dec$^{-1}$")
+ax.set_xlabel("SST Trend / K dec$^{-1}$")
+ax.set_ylabel( "Net CRE Trend / W m$^{-2}$ dec$^{-1}$")
 
 # accumulate all pts for all-deck fit
 sst_all_boxes, cre_all_boxes = [], []
