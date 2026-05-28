@@ -9,24 +9,26 @@ micromamba activate eei-env
 echo "Installing tools"
 pip install .
 
+echo "Processing CERES EBAF product to linear trends and global means"
+python -m obs_io.ceres
+
 echo "Downloading ERA5 data"
 python -m obs_io.download_era5_drivers
 python -m obs_io.download_era5_regimes
 
-echo "Processing CERES EBAF product to linear trends and global means"
-python -m obs_io.ceres
-
-echo "Processing ERA5 climatology to trends on CERES grid"
+echo "Defining masks for dynamical regimes based on ERA5 climatology"
 python -m obs_io.process_era5clim
+python -m obs_io.process_masks
 
-echo "Processing drivers to trends on CERES grind"
+echo "Processing CERES EBAF trends over dynamical regimes"
+python -m obs_io.ceres_regimes
+
+echo "Processing drivers to trends"
+python -m obs_io.process_CRH
 python -m obs_io.process_drivers
 
-echo "Defining masks for dynamical regimes based on climatology"
-python -m obs_io.process_regimes
-
-echo "Processing CERES EBAF trends over regimes"
-python -m obs_io.ceres_regimes
+echo "Computing analytic clear-sky OLR trends for comparison"
+python -m obs_io.OLR_analytic
 
 echo "Making plots"
 for fig in make_figs/*.py; do    

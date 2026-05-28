@@ -79,8 +79,9 @@ def do_regime_trend_barchart(regime_trends="pp/regime_mean_trends.nc", extra_fna
 
         # --- formatting ---
         ax.set_xticks(x-width)
-        rlabels = [r.replace("_"," ") for r in regimes]
-        ax.set_xticklabels(rlabels, rotation=45, ha="right")
+        r_formatted = [r.replace('_',' ').replace("nh","NH").replace("sh","SH") for r in regimes]
+        r_formatted = [r[0].upper() + r[1:] for r in r_formatted]
+        ax.set_xticklabels(r_formatted, rotation=45, ha="right")
 
         if AREA_WEIGHT:
             ax.set_ylabel("EEI trend, area-weighted / W m$^{-2}$ dec$^{-1}$")
