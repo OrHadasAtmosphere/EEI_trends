@@ -48,7 +48,7 @@ def do_barchart(regime_trend_file="pp/regime_mean_trends.nc", PLOT_VAR="net", ex
                 bottom=bottom_pos[i],
                 color=colors[r],
                 # alpha=light_alpha + sig[i]*(1-light_alpha),
-                alpha=0.6,
+                alpha=0.65,
                 edgecolor="k",
                 label=r if i==0 else None,
             )
@@ -57,7 +57,7 @@ def do_barchart(regime_trend_file="pp/regime_mean_trends.nc", PLOT_VAR="net", ex
                 bottom=bottom_neg[i],
                 color=colors[r],
                 # alpha=light_alpha + sig[i]*(1-light_alpha),
-                alpha=0.6,
+                alpha=0.65,
                 edgecolor="k",
             )    
 
@@ -106,7 +106,7 @@ def do_barchart(regime_trend_file="pp/regime_mean_trends.nc", PLOT_VAR="net", ex
                 facecolor=colors[r],
                 edgecolor="k",
                 # hatch=hatches_legend.get(r, ""),
-                alpha=1.0
+                alpha=0.65,
             )
         )
         r_formatted = r.replace('_',' ').replace("nh","NH").replace("sh","SH")
@@ -121,7 +121,7 @@ def do_barchart(regime_trend_file="pp/regime_mean_trends.nc", PLOT_VAR="net", ex
         handleheight=1.5,
         title="Regime (area)",
         alignment="left",
-        bbox_to_anchor=(1.02, 1.0),
+        bbox_to_anchor=(1.02, 1.02),
         loc="upper left",
         frameon=False
     )
