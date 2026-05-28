@@ -136,9 +136,9 @@ def do_barchart(regime_trend_file="pp/regime_mean_trends.nc", PLOT_VAR="net", ex
     ax.axhline(0, color="k", linewidth=0.8)
 
     if PLOT_VAR == "net":
-        plt.ylabel(f"{PLOT_VAR[0].upper()+PLOT_VAR[1:]} EEI trend / W m$^{{-2}}$ dec$^{{-1}}$")
+        ax.set_ylabel(f"{PLOT_VAR[0].upper()+PLOT_VAR[1:]} EEI trend / W m$^{{-2}}$ dec$^{{-1}}$")
     else:
-        plt.ylabel(f"{PLOT_VAR.upper()} EEI trend / W m$^{{-2}}$ dec$^{{-1}}$")
+        ax.set_ylabel(f"{PLOT_VAR.upper()} EEI trend / W m$^{{-2}}$ dec$^{{-1}}$")
 
     # print numbers
     if PLOT_VAR == "net":
