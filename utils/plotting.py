@@ -9,13 +9,13 @@ color_range_for_trends = 5
 
 # color per regime
 colors = {
-    "nh_storms": "grey",
+    "nh_storms": "lightgrey",
     "nh_cryosphere": "cyan",
     "subsidence_land": "yellow",
     "subsidence_ocean": "lime",
     "tropical_ascent": "purple",
     "sh_storms": "grey",
-    "sh_cryosphere": "cyan",
+    "sh_cryosphere": "darkcyan",
     "residual": "darkorange",
 }
 

@@ -43,10 +43,12 @@ def do_barchart(regime_trend_file="pp/regime_mean_trends.nc", PLOT_VAR="net", ex
 
         # need to loop for alpha
         for i,xi in enumerate(x):
+            is_sig = sig[i]
             bars_pos = ax.bar(x[i], pos[i], width,
                 bottom=bottom_pos[i],
                 color=colors[r],
-                alpha=light_alpha + sig[i]*(1-light_alpha),
+                # alpha=light_alpha + sig[i]*(1-light_alpha),
+                alpha=0.6,
                 edgecolor="k",
                 label=r if i==0 else None,
             )
@@ -54,13 +56,15 @@ def do_barchart(regime_trend_file="pp/regime_mean_trends.nc", PLOT_VAR="net", ex
             bars_neg = ax.bar(x[i], neg[i], width,
                 bottom=bottom_neg[i],
                 color=colors[r],
-                alpha=light_alpha + sig[i]*(1-light_alpha),
+                # alpha=light_alpha + sig[i]*(1-light_alpha),
+                alpha=0.6,
                 edgecolor="k",
             )    
 
-            hatch = hatches.get(r, "")
-            bars_pos[0].set_hatch(hatch)
-            bars_neg[0].set_hatch(hatch)
+            # hatch = hatches.get(r, "")
+            if not is_sig:
+                bars_pos[0].set_hatch("oo")
+                bars_neg[0].set_hatch("oo")
 
             pct = values[i]/totals[i]*100
             if np.abs(pct) > 5:
@@ -101,7 +105,7 @@ def do_barchart(regime_trend_file="pp/regime_mean_trends.nc", PLOT_VAR="net", ex
             Patch(
                 facecolor=colors[r],
                 edgecolor="k",
-                hatch=hatches_legend.get(r, ""),
+                # hatch=hatches_legend.get(r, ""),
                 alpha=1.0
             )
         )
@@ -160,7 +164,7 @@ def do_barchart(regime_trend_file="pp/regime_mean_trends.nc", PLOT_VAR="net", ex
             levels=[0.5, 1],
             colors=[colors[r]],
             transform=ccrs.PlateCarree(),
-            alpha=0.2,
+            alpha=0.35,
         )
 
     plt.savefig(f"figures/{out_subdir}trend_barchart_{PLOT_VAR}{extra_fname}.png",
