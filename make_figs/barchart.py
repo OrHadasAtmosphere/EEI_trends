@@ -1,8 +1,10 @@
 import numpy as np
 import xarray as xr
+import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
-from utils.plotting import colors, hatches, hatches_legend
+from utils.plotting import colors, hatches, hatches_legend, central_lon, plot_coasts_grid, edge_band
+
 
 def do_barchart(regime_trend_file="pp/regime_mean_trends.nc", PLOT_VAR="net", extra_fname="", out_subdir=""):
     ds = xr.open_dataset(regime_trend_file)
@@ -21,6 +23,11 @@ def do_barchart(regime_trend_file="pp/regime_mean_trends.nc", PLOT_VAR="net", ex
     light_alpha = 0.5
 
     fig, ax = plt.subplots(figsize=(8,4))
+
+    map_ax = fig.add_axes(
+        [0.93, 0.05, 0.25, 0.25],  # [left, bottom, width, height]
+        projection=ccrs.Robinson(central_longitude=central_lon)
+    )
 
     bottom_pos = np.zeros(len(seasons))
     bottom_neg = np.zeros(len(seasons))
@@ -129,6 +136,32 @@ def do_barchart(regime_trend_file="pp/regime_mean_trends.nc", PLOT_VAR="net", ex
     ax.axhline(0, color="k", linewidth=0.8)
 
     plt.ylabel(f"{PLOT_VAR.upper()} EEI trend / W m$^{{-2}}$ dec$^{{-1}}$")
+
+    # -- inset figure of annual mean masks -- #
+    s = "ANN"
+    ann_mean_regimes = xr.open_dataset("pp/regime_masks_ann.nc", engine='netcdf4')
+    plot_coasts_grid(map_ax)
+
+    for r in regimes:
+        data = ann_mean_regimes[r].sel(season=s).astype(int)
+        band = edge_band(data, n=2)
+
+        # 1. Colored boundary band (replaces contour)
+        map_ax.contourf(
+            data.lon, data.lat, band,
+            levels=[0.5, 1],
+            colors=[colors[r]],
+            transform=ccrs.PlateCarree(),
+        )
+
+        # 2. Hatched regions with colored hatches
+        map_ax.contourf(
+            data.lon, data.lat, data,
+            levels=[0.5, 1],
+            colors=[colors[r]],
+            transform=ccrs.PlateCarree(),
+            alpha=0.2,
+        )
 
     plt.savefig(f"figures/{out_subdir}trend_barchart_{PLOT_VAR}{extra_fname}.png",
                 dpi=300, bbox_inches='tight')

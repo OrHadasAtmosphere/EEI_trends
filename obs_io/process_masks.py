@@ -104,3 +104,4 @@ def regimes_from_clim(fin, fout):
     masks.to_netcdf("pp/"+fout)
 
 regimes_from_clim("era5_clim.nc", "regime_masks.nc")
+regimes_from_clim("era5_clim_ann.nc", "regime_masks_ann.nc")

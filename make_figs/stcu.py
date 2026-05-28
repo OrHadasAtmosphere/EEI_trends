@@ -6,7 +6,7 @@ import seaborn as sns
 from scipy.stats import pearsonr
 import xarray as xr
 
-from utils.plotting import central_lon, plot_coasts_grid, colors, hatches, edge_band
+from utils.plotting import central_lon, plot_coasts_grid, colors, hatches, edge_band, hatches_legend
 
 ceres = xr.open_mfdataset(["pp/ceres_trends.nc"])
 subsidence = xr.open_dataset("pp/regime_masks.nc").subsidence_ocean

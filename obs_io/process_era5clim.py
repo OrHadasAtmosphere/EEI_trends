@@ -11,6 +11,10 @@ season_def = {
     "DJF":[12,1,2],
 }
 
+annual = {
+    "ANN": list(range(1, 13)),
+}
+
 def process_era5_clim():
     ceres = xr.open_dataset("pp/ceres_trends.nc")
     ceres = ceres.sortby(["lat","lon"])
@@ -45,16 +49,18 @@ def process_era5_clim():
     return add_weights(ds)
 
 # make seasonal clim
-def seasonal_clim(ds, slice=slice("1990-03-01", "2000-03-01"), outfile_ext=""):
+def seasonal_clim(ds, slice=slice("1990-03-01", "2000-03-01"), outfile_ext="", period_def=season_def):
     ds = ds.sel(time=slice)
     all = []
-    for seas in season_def.keys():
-        sub = ds.sel(time=ds.time.dt.month.isin(season_def[seas]))
+    for p in period_def.keys():
+        sub = ds.sel(time=ds.time.dt.month.isin(period_def[p]))
         sub_mean = sub.weighted(sub.days_in_month).mean("time")
-        sub_mean = sub_mean.expand_dims(season=[seas])
+        sub_mean = sub_mean.expand_dims(season=[p])
         all.append(sub_mean)
     ds = xr.concat(all, dim="season")
     ds = ds.drop_vars(["days_in_month"])
     ds.to_netcdf(f"pp/era5_clim{outfile_ext}.nc")
 
-seasonal_clim(process_era5_clim())
+ds = process_era5_clim()
+seasonal_clim(ds)
+seasonal_clim(ds, period_def=annual, outfile_ext="_ann")
