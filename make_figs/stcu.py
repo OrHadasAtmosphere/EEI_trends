@@ -120,7 +120,7 @@ ax.grid(alpha=0.3, linestyle=":")
 
 # - inset plot (map of stcu lat-lon boxes and of subsidence ocean region): -
 
-# color subsidence mask for mode mask by gridpoint
+# color subsidence mask for union over szn
 mask_union = subsidence.any(dim="season")
 lon_vals = mask_union.lon.values
 lat_vals = mask_union.lat.values
