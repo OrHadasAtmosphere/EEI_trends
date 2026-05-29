@@ -84,11 +84,17 @@ terra = xr.open_dataset("../CFMIP2024_analysis/MODIS_AOD/Terra_combined.nc").sor
 terra["lon"] = (terra.coords['lon'] + 360) % 360
 terra = terra.sortby("lon").drop_vars("sza")
 terra = terra.rename_vars({"aod":"aod_terra"})
+newterra = xr.open_dataset("../CFMIP2024_analysis/MODIS_AOD/Terra_2024_2026.nc").sortby("lat").sortby("lon")
+newterra = newterra.rename_vars({"aod":"aod_terra"})
+terra = terra.combine_first(newterra)
 
 aqua = xr.open_dataset("../CFMIP2024_analysis/MODIS_AOD/Aqua_combined.nc").sortby("lat")
 aqua["lon"] = (aqua.coords['lon'] + 360) % 360
 aqua = aqua.sortby("lon").drop_vars("sza")
 aqua = aqua.rename_vars({"aod":"aod_aqua"})
+newaqua = xr.open_dataset("../CFMIP2024_analysis/MODIS_AOD/Aqua_2024_2026.nc").sortby("lat").sortby("lon")
+newaqua = newaqua.rename_vars({"aod":"aod_aqua"})
+aqua = aqua.combine_first(newaqua)
 
 ds = xr.merge([terra, aqua])
 terra.close()
@@ -97,7 +103,7 @@ aqua.close()
 aod_modis = np.nanmean(np.stack([ds.aod_aqua.values, ds.aod_terra.values]), axis=0)
 aod_modis = xr.DataArray(aod_modis, coords=ds.aod_aqua.coords, dims=ds.aod_aqua.dims)
 ds = aod_modis.to_dataset(name="aod")
-ds = ds.sel(time=slice("2000-03-01", "2024-03-01")) # TODO 2026
+ds = ds.sel(time=slice("2000-03-01", "2026-03-01"))
 
 seas = ds.pipe(add_weights).pipe(march_to_feb_years).pipe(seasonal_means)
 trend = to_trend(seas).rename({"aod":"aod_trend"})
