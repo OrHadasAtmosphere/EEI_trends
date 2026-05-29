@@ -66,7 +66,6 @@ map_ax = fig.add_axes(
     [0.0745, 0.745, 0.35, 0.35],  # [left, bottom, width, height]
     projection=ccrs.Robinson(central_longitude=central_lon)
 )
-map_ax.set_extent([central_lon - 180, central_lon + 180, -60, 60], crs=ccrs.PlateCarree())
 
 # - main plot: - 
 
@@ -121,10 +120,11 @@ ax.grid(alpha=0.3, linestyle=":")
 
 # - inset plot (map of stcu lat-lon boxes and of subsidence ocean region): -
 
-# color subsidence mask for union of all seasons' masks
+# color subsidence mask for mode mask by gridpoint
 mask_union = subsidence.any(dim="season")
 lon_vals = mask_union.lon.values
 lat_vals = mask_union.lat.values
+
 
 # 1. Colored boundary band
 map_ax.contourf(
@@ -135,7 +135,16 @@ map_ax.contourf(
     transform=ccrs.PlateCarree(),
 )
 
-# 2. Hatched regions with colored hatches
+# 2. Filled contours
+map_ax.contourf(
+    lon_vals, lat_vals, mask_union.values,
+    levels=[0.5, 1],
+    colors=[colors['subsidence_ocean']],
+    transform=ccrs.PlateCarree(),
+    alpha=0.3,
+)
+
+# 3. Hatched regions with colored hatches
 map_ax.contourf(
     lon_vals, lat_vals, mask_union.values,
     levels=[0.5, 1],
@@ -182,4 +191,3 @@ for name, lat_min, lat_max, lon_min, lon_max, color in stcu_deck_boxes:
             transform=ccrs.PlateCarree(),
         )
 fig.savefig(f"figures/stcu_ssts.png", dpi=500, bbox_inches='tight')
-print(f"plotted sst regressed on net cre for {len(sst_all_boxes)} gridpoints")
