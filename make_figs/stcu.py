@@ -66,6 +66,7 @@ map_ax = fig.add_axes(
     [0.0745, 0.745, 0.35, 0.35],  # [left, bottom, width, height]
     projection=ccrs.Robinson(central_longitude=central_lon)
 )
+map_ax.set_extent([central_lon - 180, central_lon + 180, -60, 60], crs=ccrs.PlateCarree())
 
 # - main plot: - 
 
