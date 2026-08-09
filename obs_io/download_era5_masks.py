@@ -1,64 +1,22 @@
 import cdsapi
 
-target = "raw_data/masks_levels.nc"
 dataset = "reanalysis-era5-single-levels-monthly-means"
 request = {
     "product_type": ["monthly_averaged_reanalysis"],
-    "variable": [
-        "land_sea_mask",
-        "sea_ice_cover"
-    ],
-    "year": [
-        "1990", "1991", "1992",
-        "1993", "1994", "1995",
-        "1996", "1997", "1998",
-        "1999", "2000", "2001",
-        "2002", "2003", "2004",
-        "2005", "2006", "2007",
-        "2008", "2009", "2010",
-    ],
-    "month": [
-        "01", "02", "03",
-        "04", "05", "06",
-        "07", "08", "09",
-        "10", "11", "12"
-    ],
+    "variable": ["land_sea_mask", "sea_ice_cover"],
+    "year": [str(year) for year in range(1986, 2011)],
+    "month": [f"{month:02d}" for month in range(1, 13)],
     "time": ["00:00"],
     "data_format": "netcdf",
     "download_format": "unarchived",
     "grid": [1, 1],
 }
 
-client = cdsapi.Client()
-client.retrieve(dataset, request, target)
 
-###
+def download_era5_masks(target="raw_data/masks_levels.nc"):
+    client = cdsapi.Client()
+    client.retrieve(dataset, request, target)
 
-target = "raw_data/masks_pressures.nc"
-dataset = "reanalysis-era5-pressure-levels-monthly-means"
-request = {
-    "product_type": ["monthly_averaged_reanalysis"],
-    "variable": ["vertical_velocity"],
-    "pressure_level": ["500"],
-    "year": [
-        "1990", "1991", "1992",
-        "1993", "1994", "1995",
-        "1996", "1997", "1998",
-        "1999", "2000", "2001",
-        "2002", "2003", "2004",
-        "2005", "2006", "2007",
-        "2008", "2009", "2010",
-    ],
-    "month": [
-        "01", "02", "03",
-        "04", "05", "06",
-        "07", "08", "09",
-        "10", "11", "12"
-    ],
-    "time": ["00:00"],
-    "data_format": "netcdf",
-    "download_format": "unarchived",
-    "grid": [1, 1],
-}
-client = cdsapi.Client()
-client.retrieve(dataset, request, target)
+
+if __name__ == "__main__":
+    download_era5_masks()

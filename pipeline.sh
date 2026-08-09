@@ -14,7 +14,7 @@ python -m obs_io.ceres
 
 echo "Downloading ERA5 data"
 python -m obs_io.download_era5_drivers
-python -m obs_io.download_era5_regimes
+python -m obs_io.download_era5_masks
 
 echo "Defining masks for dynamical regimes based on ERA5 climatology"
 python -m obs_io.process_era5clim
