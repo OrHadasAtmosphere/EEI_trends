@@ -9,9 +9,11 @@ SEASON_DEF = {
     "SON": [9, 10, 11],
     "DJF": [12, 1, 2],
 }
-DATA_YEARS = range(1986, 2010)
-OMEGA_YEARS = range(1991, 2010)
-CONTROL_YEARS = slice(1986, 2000)
+LEVEL_YEARS = range(1986, 2010)
+OMEGA_YEARS = range(1991, 2026)
+EARLY_YEARS = range(1986, 2001)
+LATE_YEARS = range(2011, 2026)
+MASK_YEARS = [*EARLY_YEARS, *LATE_YEARS]
 
 
 def seasonal_yearly(ds, years):
@@ -43,7 +45,7 @@ def process_era5_clim():
     levels = xr.open_dataset("raw_data/masks_levels.nc")
     levels = levels.rename({"valid_time": "time", "latitude": "lat", "longitude": "lon"})
     levels = levels.drop_vars(["number", "expver"], errors="ignore")
-    levels = seasonal_yearly(add_weights(levels), DATA_YEARS)
+    levels = seasonal_yearly(add_weights(levels), LEVEL_YEARS)
 
     omega = xr.open_dataset("raw_data/ERA5_omega500_monthly_1991_2026-02.nc")
     omega = omega.rename({"latitude": "lat", "longitude": "lon"})
@@ -51,28 +53,31 @@ def process_era5_clim():
     omega = omega.drop_vars(["pressure_level", "number", "expver", "w"], errors="ignore")
     omega = seasonal_yearly(add_weights(omega), OMEGA_YEARS)
 
-    slp = xr.open_dataset("raw_data/SLP_var_2_10day_1940_2025.nc")
-    slp = slp.rename({"latitude": "lat", "longitude": "lon"})
-    slp = slp.sel(year=list(DATA_YEARS))
+    proximity = xr.open_dataset(
+        "raw_data/cyclone_anticyclone_1000km_fraction_1986_2024.nc"
+    )[["cyclone_day_fraction", "anticyclone_day_fraction"]]
+    proximity = proximity.rename({"latitude": "lat", "longitude": "lon"})
 
     regridder = xe.Regridder(levels, ceres, method="bilinear")
     levels = regridder(levels)
     regridder = xe.Regridder(omega, ceres, method="bilinear")
     omega = regridder(omega)
-    regridder = xe.Regridder(slp, ceres, method="bilinear")
-    slp = regridder(slp)
+    regridder = xe.Regridder(proximity, ceres, method="bilinear")
+    proximity = regridder(proximity)
 
-    return xr.merge([levels, omega, slp], join="outer").sel(
+    return xr.merge([levels, omega, proximity], join="outer").sel(
         season=list(SEASON_DEF)
     )
 
 
-def seasonal_clim(ds, time_slice=CONTROL_YEARS, outfile_ext=""):
-    if time_slice is not None:
+def seasonal_clim(ds, time_slice=MASK_YEARS, outfile_ext=""):
+    if isinstance(time_slice, slice):
         start = int(str(time_slice.start)[:4]) if time_slice.start is not None else int(ds.year.min())
         stop = int(str(time_slice.stop)[:4]) - 1 if isinstance(time_slice.stop, str) else time_slice.stop
         stop = int(ds.year.max()) if stop is None else int(stop)
         ds = ds.sel(year=slice(start, stop))
+    elif time_slice is not None:
+        ds = ds.sel(year=list(time_slice))
     encoding = {
         variable: {"zlib": True, "complevel": 4} for variable in ds.data_vars
     }

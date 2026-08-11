@@ -6,7 +6,7 @@ import xarray as xr
 
 ###
 # make regime masks
-# (1986-2000 climatology; omega uses 1991-2000)
+# union of 1986-2000 and 2011-2025 criteria; omega starts in 1991
 ###
 
 SIGMA_LAT = 1.5
@@ -15,12 +15,17 @@ TROPICAL_LAT = 40
 POLAR_LAT = 60
 SIC_THRESH = 0.1
 LAND_THRESH = 0.1
-OMEGA_THRESH = 0.0
-NH_STORM_FACTOR = 0.15
-SH_STORM_FACTOR = 0.15
+OMEGA_THRESH = 0.005
+STORM_PROXIMITY_THRESHOLD = 0.2
+STORM_PROXIMITY_FILE = (
+    "raw_data/cyclone_anticyclone_1000km_fraction_1986_2024.nc"
+)
 CONFIDENCE_LEVEL = 0.9
-HPA2_TO_PA2 = 10_000.0
-MIN_UNIT_GAP_DECADES = 2.0
+EARLY_YEARS = range(1986, 2001)
+EARLY_OMEGA_YEARS = range(1991, 2001)
+LATE_YEARS = range(2016, 2026)
+EARLY_STORM_YEARS = range(1986, 2001)
+LATE_STORM_YEARS = range(2011, 2025)
 
 
 def smooth(da):
@@ -61,39 +66,57 @@ def confidence_bounds(yearly):
     return mean - critical_value * standard_error, mean + critical_value * standard_error
 
 
-def normalize_slp_units(slp_var):
-    spatial_dimensions = [dimension for dimension in slp_var.dims if dimension != "year"]
-    yearly_scale = slp_var.max(dim=spatial_dimensions, skipna=True)
-    scale_values = np.asarray(yearly_scale.values, dtype=float)
-    ordered_log_scale = np.sort(np.log10(scale_values))
-    gaps = np.diff(ordered_log_scale)
-    if gaps.size == 0 or float(gaps.max()) < MIN_UNIT_GAP_DECADES:
-        return slp_var
-    gap_index = int(np.argmax(gaps))
-    split_log_scale = (
-        ordered_log_scale[gap_index] + ordered_log_scale[gap_index + 1]
-    ) / 2.0
-    hpa2_year_mask = np.log10(yearly_scale) < split_log_scale
-    return xr.where(hpa2_year_mask, slp_var * HPA2_TO_PA2, slp_var)
+def period_data(da, years):
+    return valid_years(da.sel(year=list(years)))
 
 
-def normalize_slp_latitude(slp_var):
-    sine_squared = np.sin(np.deg2rad(slp_var.lat)) ** 2
-    latitude_factor = xr.where(np.abs(slp_var.lat) <= 10, 1.0, sine_squared)
-    return slp_var / latitude_factor
+def storm_proximity_data(ds):
+    variable_names = ["cyclone_day_fraction", "anticyclone_day_fraction"]
+    if all(name in ds for name in variable_names):
+        proximity = ds[variable_names]
+    else:
+        storm_years = [*EARLY_STORM_YEARS, *LATE_STORM_YEARS]
+        with xr.open_dataset(STORM_PROXIMITY_FILE) as proximity_ds:
+            proximity = proximity_ds[variable_names].rename(
+                {"latitude": "lat", "longitude": "lon"}
+            )
+            proximity = proximity.sel(year=storm_years, season=ds.season)
+            proximity = proximity.interp(lat=ds.lat, lon=ds.lon).load()
+    return valid_years(
+        proximity.cyclone_day_fraction + proximity.anticyclone_day_fraction
+    )
 
 
 def regimes_from_clim(fin, fout):
     ds = xr.open_dataset("pp/"+fin)
 
-    lsm = ds.lsm.mean("year")
-    siconc_lower, _ = confidence_bounds(ds.siconc)
+    lsm = period_data(ds.lsm, EARLY_YEARS).mean("year")
+    siconc_lower, _ = confidence_bounds(period_data(ds.siconc, EARLY_YEARS))
     omega500 = smooth_yearly(valid_years(ds.omega500))
-    omega_lower, omega_upper = confidence_bounds(omega500)
-    slp_var = normalize_slp_units(valid_years(ds.SLP_var))
-    slp_var = smooth_yearly(normalize_slp_latitude(slp_var))
-    slp_lower, _ = confidence_bounds(slp_var)
-    slp_mean = slp_var.mean("year")
+    early_omega_lower, early_omega_upper = confidence_bounds(
+        period_data(omega500, EARLY_OMEGA_YEARS)
+    )
+    late_omega_lower, late_omega_upper = confidence_bounds(
+        period_data(omega500, LATE_YEARS)
+    )
+    storm_proximity = storm_proximity_data(ds)
+    early_storm_lower, _ = confidence_bounds(
+        period_data(storm_proximity, EARLY_STORM_YEARS)
+    )
+    late_storm_lower, _ = confidence_bounds(
+        period_data(storm_proximity, LATE_STORM_YEARS)
+    )
+    storm_criterion = (
+        (early_storm_lower > STORM_PROXIMITY_THRESHOLD)
+        | (late_storm_lower > STORM_PROXIMITY_THRESHOLD)
+    )
+
+    early_ascent = early_omega_upper <= -OMEGA_THRESH
+    early_descent = early_omega_lower > OMEGA_THRESH
+    late_ascent = late_omega_upper <= -OMEGA_THRESH
+    late_descent = late_omega_lower > OMEGA_THRESH
+    ascent_criterion = early_ascent | (~early_descent & late_ascent)
+    descent_criterion = early_descent | (~early_ascent & late_descent)
 
     # define masks
     masks = xr.Dataset()
@@ -113,34 +136,31 @@ def regimes_from_clim(fin, fout):
         | ((masks.lat <= -65) & (lsm > LAND_THRESH)), 0
     ) # any land >65
 
-    # SLP_var_max for NH and SH
-    slp_var_max_nh = slp_mean.where(masks.lat > 0).max(dim=("lat", "lon"))
-    slp_var_max_sh = slp_mean.where(masks.lat < 0).max(dim=("lat", "lon"))
     masks["nh_storms"] = masks.nh_storms.where(
         (masks.lat > 0)
-        & (slp_lower > NH_STORM_FACTOR * slp_var_max_nh)
+        & storm_criterion
         & (masks.nh_cryosphere < 0.5), 0
     )
     masks["sh_storms"] = masks.sh_storms.where(
         (masks.lat < 0)
-        & (slp_lower > SH_STORM_FACTOR * slp_var_max_sh)
+        & storm_criterion
         & (masks.sh_cryosphere < 0.5), 0
     )
 
     masks["tropical_ascent"] = masks.tropical_ascent.where(
         (masks.lat >= -TROPICAL_LAT) & (masks.lat <= TROPICAL_LAT)
-        & (omega_upper <= -OMEGA_THRESH)
+        & ascent_criterion
         & (masks.nh_storms < 0.5) & (masks.sh_storms < 0.5), 0
     )
     masks["subsidence_land"] = masks.subsidence_land.where(
         (masks.lat >= -TROPICAL_LAT) & (masks.lat <= TROPICAL_LAT)
-        & (omega_lower > OMEGA_THRESH)
+        & descent_criterion
         & (lsm >= LAND_THRESH)
         & (masks.nh_storms < 0.5) & (masks.sh_storms < 0.5), 0
     )
     masks["subsidence_ocean"] = masks.subsidence_ocean.where(
         (masks.lat >= -TROPICAL_LAT) & (masks.lat <= TROPICAL_LAT)
-        & (omega_lower > OMEGA_THRESH)
+        & descent_criterion
         & (lsm < LAND_THRESH)
         & (masks.nh_storms < 0.5) & (masks.sh_storms < 0.5), 0
     )
@@ -166,4 +186,5 @@ def regimes_from_clim(fin, fout):
     masks.to_netcdf("pp/"+fout)
 
 
-regimes_from_clim("era5_clim.nc", "regime_masks.nc")
+if __name__ == "__main__":
+    regimes_from_clim("era5_clim.nc", "regime_masks.nc")
