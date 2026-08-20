@@ -45,5 +45,6 @@ def regime_trend(ds, mask_file, outfile):
     rm_trend.to_netcdf("pp/"+outfile)
     print(f"done regime-mean: {outfile}")
 
-regime_trend(read_ceres_raw(), "regime_masks.nc", "regime_mean_trends.nc")
+if __name__ == "__main__":
+    regime_trend(read_ceres_raw(), "regime_masks.nc", "regime_mean_trends.nc")
     

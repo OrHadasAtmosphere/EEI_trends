@@ -150,7 +150,12 @@ def do_barchart(regime_trend_file="pp/regime_mean_trends.nc", PLOT_VAR="net", ex
             print([f"{v:.2f} ± {c:.2f}" for v, c in zip(values, ci)])
 
     # add map inset
-    ds = xr.open_dataset("pp/regime_masks.nc")
+    if "ceres" in regime_trend_file:
+        mask_file = "pp/regime_masks.nc"
+    else:
+        mask_file = regime_trend_file.replace("mean_trends", "masks")
+    print("opening "+mask_file)
+    ds = xr.open_dataset(mask_file)
     ds = ds.drop_vars("area")
     regimes = [
         "nh_cryosphere",
@@ -213,5 +218,6 @@ def do_barchart(regime_trend_file="pp/regime_mean_trends.nc", PLOT_VAR="net", ex
     plt.savefig(f"figures/{out_subdir}trend_barchart_{PLOT_VAR}{extra_fname}.png",
                 dpi=300, bbox_inches='tight')
 
-for var in ['net', 'sw']:
-    do_barchart(PLOT_VAR=var)
+if __name__ == "__main__":
+    do_barchart(PLOT_VAR="net")
+    do_barchart(PLOT_VAR="sw")

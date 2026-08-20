@@ -2,12 +2,6 @@ import numpy as np
 from scipy.ndimage import gaussian_filter
 import xarray as xr
 
-
-### 
-# make regime masks
-# (1990-2000 climatology)
-###
-
 def regimes_from_clim(fin, fout):
     ds = xr.open_dataset("pp/"+fin)
     
@@ -24,12 +18,14 @@ def regimes_from_clim(fin, fout):
     # some parameters
     SIGMA_LAT = 1.5
     SIGMA_LON = 1.5
-    TROPICAL_LAT = 40
+    TROPICAL_LAT = 40 # try 30 or 35
     POLAR_LAT = 60
     SIC_THRESH = 0.1
     LAND_THRESH = 0.1
-    OMEGA_THRESH = 0.0
-    NH_STORM_FACTOR = 0.2 # TODO
+    OMEGA_THRESH = 0.0 # try 0.01
+    # NH_SLP_FACTOR = 0.2 # try 0.5
+    # SH_SLP_FACTOR = 0.3 # try 0.5
+    NH_STORM_FACTOR = 0.3
     SH_STORM_FACTOR = 0.3
     
     # smooth dataarray
@@ -70,9 +66,14 @@ def regimes_from_clim(fin, fout):
     # SLP_var_max for NH and SH
     ds["SLP_var_max_nh"] = ds.SLP_var.where(ds.lat > 0).max(dim=("lat", "lon"))
     ds["SLP_var_max_sh"] = ds.SLP_var.where(ds.lat < 0).max(dim=("lat", "lon"))
-    ds["nh_storms"] = ds.nh_storms.where((ds.lat > 0) & (ds.SLP_var > NH_STORM_FACTOR*ds.SLP_var_max_nh) & (ds.nh_cryosphere < 0.5), 0)
-    ds["sh_storms"] = ds.sh_storms.where((ds.lat < 0) & (ds.SLP_var > SH_STORM_FACTOR*ds.SLP_var_max_sh) & (ds.sh_cryosphere < 0.5), 0)
-    
+    # ds["nh_storms"] = ds.nh_storms.where((ds.lat > 0) & (ds.SLP_var > NH_SLP_FACTOR*ds.SLP_var_max_nh) & (ds.nh_cryosphere < 0.5), 0)
+    # ds["sh_storms"] = ds.sh_storms.where((ds.lat < 0) & (ds.SLP_var > SH_SLP_FACTOR*ds.SLP_var_max_sh) & (ds.sh_cryosphere < 0.5), 0)
+
+    # storm frequency for NH and SH
+    ds["nh_storms"] = ds.nh_storms.where((ds.lat > 0) & (ds.monthly_storm_day_fraction > NH_STORM_FACTOR) & (ds.nh_cryosphere < 0.5), 0)
+    ds["sh_storms"] = ds.sh_storms.where((ds.lat < 0) & (ds.monthly_storm_day_fraction > SH_STORM_FACTOR) & (ds.sh_cryosphere < 0.5), 0)
+
+    # omega
     ds["tropical_ascent"] = ds.tropical_ascent.where((ds.lat >= -TROPICAL_LAT) & (ds.lat <= TROPICAL_LAT) 
                                         & (ds.omega500 <= -OMEGA_THRESH) 
                                         & (ds.nh_storms < 0.5) & (ds.sh_storms < 0.5), 0)
@@ -88,7 +89,7 @@ def regimes_from_clim(fin, fout):
                                         & (ds.subsidence_land < 0.5) & (ds.subsidence_ocean < 0.5)
                                         & (ds.tropical_ascent < 0.5), 0)
     
-    masks = ds.drop_vars(["lsm","siconc","omega500","SLP_var","SLP_var_max_nh","SLP_var_max_sh"])
+    masks = ds.drop_vars(["lsm","siconc","omega500","SLP_var","SLP_var_max_nh","SLP_var_max_sh","monthly_storm_day_fraction"])
     
     # add grid-area
     R = 6371000  # radius of Earth / m
@@ -103,4 +104,10 @@ def regimes_from_clim(fin, fout):
     
     masks.to_netcdf("pp/"+fout)
 
-regimes_from_clim("era5_clim.nc", "regime_masks.nc")
+
+### 
+# make regime masks
+# (1990-2000 climatology)
+###
+if __name__ == "__main__":
+    regimes_from_clim("era5_clim.nc", "regime_masks.nc")
