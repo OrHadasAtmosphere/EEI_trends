@@ -49,10 +49,6 @@ def eei_and_drivers_maps(eei, driver, savefile):
     plot_colorbar(fig, cf, "EEI trend / W m$^{-2}$ dec$^{-1}$", [0.25, 0.38, 0.5, 0.02])
 
     letter = np.array(["g","h","i"])
-    # vars = ["sst","tcw","siconc"]
-    # lim = [1, 2, 0.1]
-    # scale = [1, 1, 1]
-    # unit = ["K", "kg m$^2$", "%"]
     vars = ["sst","crh_600_400","siconc"]
     lim = [1, 4, 0.1]
     scale = [1, 100, 1]
@@ -75,44 +71,11 @@ def eei_and_drivers_maps(eei, driver, savefile):
     plt.savefig("figures/"+savefile, dpi=300, facecolor="w", bbox_inches="tight")
 
 
-eei_trend = xr.open_dataset("pp/ceres_trends.nc").sel(season="ANN").load()
-drivers_trends = xr.open_dataset("pp/era5_drivers_trends.nc").sel(season="ANN")
-drivers_trends["siconc"] = drivers_trends["siconc"].where(np.abs(drivers_trends["siconc"]) >= 0.01, np.nan)
-
-# get aod trend
-terra = xr.open_dataset("../CFMIP2024_analysis/MODIS_AOD/Terra_combined.nc").sortby("lat")
-terra["lon"] = (terra.coords['lon'] + 360) % 360
-terra = terra.sortby("lon").drop_vars("sza")
-terra = terra.rename_vars({"aod":"aod_terra"})
-newterra = xr.open_dataset("../CFMIP2024_analysis/MODIS_AOD/Terra_2024_2026.nc").sortby("lat").sortby("lon")
-newterra = newterra.rename_vars({"aod":"aod_terra"})
-terra = terra.combine_first(newterra)
-
-aqua = xr.open_dataset("../CFMIP2024_analysis/MODIS_AOD/Aqua_combined.nc").sortby("lat")
-aqua["lon"] = (aqua.coords['lon'] + 360) % 360
-aqua = aqua.sortby("lon").drop_vars("sza")
-aqua = aqua.rename_vars({"aod":"aod_aqua"})
-newaqua = xr.open_dataset("../CFMIP2024_analysis/MODIS_AOD/Aqua_2024_2026.nc").sortby("lat").sortby("lon")
-newaqua = newaqua.rename_vars({"aod":"aod_aqua"})
-aqua = aqua.combine_first(newaqua)
-
-ds = xr.merge([terra, aqua])
-terra.close()
-aqua.close()
-
-aod_modis = np.nanmean(np.stack([ds.aod_aqua.values, ds.aod_terra.values]), axis=0)
-aod_modis = xr.DataArray(aod_modis, coords=ds.aod_aqua.coords, dims=ds.aod_aqua.dims)
-ds = aod_modis.to_dataset(name="aod")
-ds = ds.sel(time=slice("2000-03-01", "2026-03-01"))
-
-seas = ds.pipe(add_weights).pipe(march_to_feb_years).pipe(seasonal_means)
-trend = to_trend(seas).rename({"aod":"aod_trend"})
-seas = seas.rename({"aod":"aod_mean"})
-ds = xr.merge([ds.drop_vars("days_in_month"), seas.drop_vars("days_in_month"), trend])
-
-# add to drivers
-drivers_trends["aod"] = ds.aod_trend.sel(season="ANN")
-drivers_trends = drivers_trends.load()
-
-eei_and_drivers_maps(eei_trend, drivers_trends, savefile="eei_drivers_maps_aod.png")
-
+if __name__ == "__main__":
+    eei_trend = xr.open_dataset("pp/ceres_trends.nc").sel(season="ANN").load()
+    drivers_trends = xr.open_dataset("pp/era5_drivers_trends.nc").sel(season="ANN")
+    drivers_trends["siconc"] = drivers_trends["siconc"].where(np.abs(drivers_trends["siconc"]) >= 0.01, np.nan)
+    
+    drivers_trends = drivers_trends.load()
+    eei_and_drivers_maps(eei_trend, drivers_trends, savefile="eei_drivers_maps_aod.png")
+    
