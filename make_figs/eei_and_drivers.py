@@ -6,6 +6,12 @@ import cartopy.crs as ccrs
 from utils import global_mean
 from utils.plotting import central_lon, plot_colormesh, plot_coasts_grid, plot_colorbar
 
+from matplotlib.colors import LinearSegmentedColormap
+colors = ["orange", "white", "cornflowerblue"]
+orange_white_blue = LinearSegmentedColormap.from_list("orange_white_blue", colors)
+
+from obs_io import to_trend, add_weights, march_to_feb_years, seasonal_means
+
 nicenames = {
     "net":"Net,",
     "lw":"LW,",
@@ -17,7 +23,7 @@ nicenames = {
     "column_rh":"Column relative humidity",
     "rh400":"Relative humidity (400 hPa)",
     "crh_600_400":"Relative humidity",
-    "siconc":"Sea ice concentration",
+    "siconc":"Sea ice & Aerosol",
 }
 
 def eei_and_drivers_maps(eei, driver, savefile):
@@ -43,29 +49,33 @@ def eei_and_drivers_maps(eei, driver, savefile):
     plot_colorbar(fig, cf, "EEI trend / W m$^{-2}$ dec$^{-1}$", [0.25, 0.38, 0.5, 0.02])
 
     letter = np.array(["g","h","i"])
-    # vars = ["sst","tcw","siconc"]
-    # lim = [1, 2, 0.1]
-    # scale = [1, 1, 1]
-    # unit = ["K", "kg m$^2$", "%"]
     vars = ["sst","crh_600_400","siconc"]
     lim = [1, 4, 0.1]
     scale = [1, 100, 1]
     unit = ["K", "%", "%"]
     xbar = [1/6-0.1, 1/2-0.1, 5/6-0.1]
+
+    ax = axes[3,2]
+    p = plot_colormesh(ax, driver["aod"], lim=0.1, cmap=orange_white_blue)
+    plot_colorbar(fig, p, "AOD Trend / dec$^{-1}$", [5/6+0.01, -0.05, 0.15, 0.02], lim=0.1, nticks=3)
+    
     for i,vari  in enumerate(vars):
         ax = axes[3,i]
         p = plot_colormesh(ax, driver[vari]*scale[i], lim=lim[i], cmap="PRGn")
         plot_coasts_grid(ax)
         ax.set_title(letter[i]+") "+nicenames[vari], position=(0.22, 1.0), loc="left")
-        plot_colorbar(fig, p, "Trend / "+unit[i]+" dec$^{-1}$", [xbar[i], -0.05, 0.2, 0.02], lim=lim[i])
-    
+        if i < 2:
+            plot_colorbar(fig, p, "Trend / "+unit[i]+" dec$^{-1}$", [xbar[i], -0.05, 0.2, 0.02], lim=lim[i])
+    plot_colorbar(fig, p, "SIC Trend / "+unit[i]+" dec$^{-1}$", [5/6-0.15, -0.05, 0.15, 0.02], lim=lim[i], nticks=3)
+
     plt.savefig("figures/"+savefile, dpi=300, facecolor="w", bbox_inches="tight")
 
 
-
-eei_trend = xr.open_dataset("pp/ceres_trends.nc").sel(season="ANN").load()
-drivers_trends = xr.open_dataset("pp/era5_drivers_trends.nc").sel(season="ANN").load()
-drivers_trends["siconc"] = drivers_trends["siconc"].where(np.abs(drivers_trends["siconc"]) >= 0.01, np.nan)
-
-eei_and_drivers_maps(eei_trend, drivers_trends, savefile="eei_drivers_maps.png")
-
+if __name__ == "__main__":
+    eei_trend = xr.open_dataset("pp/ceres_trends.nc").sel(season="ANN").load()
+    drivers_trends = xr.open_dataset("pp/era5_drivers_trends.nc").sel(season="ANN")
+    drivers_trends["siconc"] = drivers_trends["siconc"].where(np.abs(drivers_trends["siconc"]) >= 0.01, np.nan)
+    
+    drivers_trends = drivers_trends.load()
+    eei_and_drivers_maps(eei_trend, drivers_trends, savefile="eei_drivers_maps_aod.png")
+    
