@@ -1,6 +1,7 @@
 import xarray as xr
 import os
 import xesmf as xe
+import numpy as np
 from . import add_weights, march_to_feb_years, seasonal_means, to_trend
 from utils.calc_EIS import calc_EIS
 import warnings
@@ -33,6 +34,13 @@ ds["T700"] = ds.sel(pressure_level=700).t
 ds["T850"] = ds.sel(pressure_level=850).t
 ds["EIS"] = calc_EIS(ds.t2m, ds.sp, ds.T700, ds.T850)
 ds = ds.drop_vars(["t","pressure_level","number","expver","T700","T850","sp"])
+
+# shift times to 15th of month
+ds["time"] = ds.time + np.timedelta64(14, "D")
+
+# add AOD
+aod = xr.open_dataset(inputs+"modis_aod.nc").transpose("time", "lat", "lon")
+ds = ds.merge(aod)
 
 # proper years and weighting
 ds = ds.sel(time=slice("2000-03-01", "2026-03-01"))
