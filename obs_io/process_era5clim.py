@@ -24,8 +24,7 @@ def process_era5_clim():
     ds = wrapped.assign_coords(lon=list(ds.lon.values) + [ds.lon.values[0] + 360])
 
     # read SLP variance climatology
-    slp = xr.open_mfdataset(["raw_data/SLP_var.nc","raw_data/SLP_var_ext.nc"])
-    # slp = xr.open_dataset("raw_data/SLP_var_2_10day_1940_2025.nc").sel(year=slice("1990","2025"))
+    slp = xr.open_mfdataset(["raw_data/SLP_var_1990_2000.nc","raw_data/SLP_var_2001_2010.nc"])
 
     # make "year" and "month" into one "time" coord
     time = pd.to_datetime(
