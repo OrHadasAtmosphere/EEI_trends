@@ -18,11 +18,11 @@ def regimes_from_clim(fin, fout):
     # some parameters
     SIGMA_LAT = 1.5
     SIGMA_LON = 1.5
-    TROPICAL_LAT = 40 # try 30 or 35
+    TROPICAL_LAT = 35 # was originally 40, try 35
     POLAR_LAT = 60
     SIC_THRESH = 0.1
     LAND_THRESH = 0.1
-    OMEGA_THRESH = 0.0 # try 0.01
+    OMEGA_THRESH = 0.0 # was originally 0.0, try 0.01
     # NH_SLP_FACTOR = 0.2 # try 0.5
     # SH_SLP_FACTOR = 0.3 # try 0.5
     NH_STORM_FACTOR = 0.3
