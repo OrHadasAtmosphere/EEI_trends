@@ -24,16 +24,17 @@ def read_ceres_raw(pathname="raw_data/CERES_EBAF-TOA_Ed4.2.1_Subset_200003-20260
         .pipe(seasonal_means)
     )
 
-ds = read_ceres_raw()
-
-# save linear trends
-to_trend(ds).to_netcdf(f"pp/ceres_trends.nc")
-print("done linear trend")
-
-# save global-mean
-ds_gm = global_mean(ds).load()
-gm_trend = trend_and_ci(ds_gm)
-gm_trend.to_netcdf("pp/ceres_gm_timeseries.nc")
-ds_gm.close()
-gm_trend.close()
-print("done global-mean")
+if __name__ == "__main__":
+    ds = read_ceres_raw()
+    
+    # save linear trends
+    to_trend(ds).to_netcdf(f"pp/ceres_trends.nc")
+    print("done linear trend")
+    
+    # save global-mean
+    ds_gm = global_mean(ds).load()
+    gm_trend = trend_and_ci(ds_gm)
+    gm_trend.to_netcdf("pp/ceres_gm_timeseries.nc")
+    ds_gm.close()
+    gm_trend.close()
+    print("done global-mean")
