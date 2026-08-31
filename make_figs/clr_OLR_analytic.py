@@ -14,6 +14,7 @@ lon_vals = mask_union.lon.values
 lat_vals = mask_union.lat.values
 
 lw_clr_ceres = xr.open_dataset("pp/ceres_trends.nc").lw_clr.sel(season="ANN").where(mask_union)
+weights = np.cos(np.deg2rad(lw_clr_ceres.lat))
 
 rh_var = "crh_600_400"
 
@@ -22,6 +23,10 @@ lw_clr_varRH = reconstruct.lwclr_varRH.sel(season="ANN").where(mask_union)
 lw_clr_varTs = reconstruct.lwclr_varTs.sel(season="ANN").where(mask_union)
 lw_clr_varco2 = reconstruct.lwclr_varco2.sel(season="ANN").where(mask_union)
 lw_clr_tot = reconstruct.lwclr_all.sel(season="ANN").where(mask_union)
+resid = lw_clr_ceres - lw_clr_tot
+
+print("correlation between RH-component and residual")
+print(xr.corr(lw_clr_varRH, resid, dim=("lat","lon"), weights=weights).values)
 
 proj = ccrs.Robinson(central_longitude=central_lon)
 clim = 3
@@ -32,7 +37,6 @@ p = plot_colormesh(ax, lw_clr_ceres, lim=clim)
 plot_coasts_grid(ax)
 ax.set_extent([-180, 180, -45, 45],crs=ccrs.PlateCarree())
 ax.set_title("a) CERES observed LW,clr", loc="left")
-weights = np.cos(np.deg2rad(lw_clr_ceres.lat))
 mean = lw_clr_ceres.mean("lon").weighted(weights).mean("lat").values
 ax.set_title("mean$=$"+f"{mean:.2f}", loc="right")
 
@@ -73,7 +77,6 @@ mean = lw_clr_varco2.mean("lon").weighted(weights).mean("lat").values
 ax.set_title("mean$=$"+f"{mean:.2f}"+", $r=$"+f"{corr:.2f}", loc="right")
 
 ax = axes[2,1]
-resid = lw_clr_ceres - lw_clr_tot
 p = plot_colormesh(ax, resid, lim=clim)
 plot_coasts_grid(ax)
 ax.set_extent([-180, 180, -45, 45],crs=ccrs.PlateCarree())

@@ -18,7 +18,7 @@ nicenames = {
     "lw_cre":"LW,CRE",
 }
 
-def do_regime_trend_barchart(regime_trends="pp/regime_mean_trends.nc", extra_fname="", out_subdir=""):
+def do_regime_trend_barchart(regime_trends="pp/regime_mean_trends.nc", AREA_WEIGHT=True, extra_fname="", out_subdir=""):
     ds = xr.open_dataset(regime_trends).sel(season=PLOT_SEASON)
     ds = ds.sel(regime=[
         "sh_cryosphere", "sh_storms", "subsidence_land",
@@ -27,54 +27,53 @@ def do_regime_trend_barchart(regime_trends="pp/regime_mean_trends.nc", extra_fna
     ])
     regimes = ds.regime.values
 
-    for AREA_WEIGHT in [True, False]:
-        if not AREA_WEIGHT:
-            ds /= ds.area_fraction
+    if not AREA_WEIGHT:
+        ds /= ds.area_fraction
 
-        x = np.arange(len(regimes))
-        width = 0.35  # bar width
-        x = x - width/2
-        alpha_light = 0.5
+    x = np.arange(len(regimes))
+    width = 0.35  # bar width
+    x = x - width/2
+    alpha_light = 0.5
 
-        fig, ax = plt.subplots(figsize=(10,4))
-        for i,sky in enumerate(["clr","cre"]):
-            x += width*i
-            bottom_pos = np.zeros(len(regimes))
-            bottom_neg = np.zeros(len(regimes))
+    fig, ax = plt.subplots(figsize=(10,4))
+    for i,sky in enumerate(["clr","cre"]):
+        x += width*i
+        bottom_pos = np.zeros(len(regimes))
+        bottom_neg = np.zeros(len(regimes))
 
-            for comp in ["sw", "lw"]:
-                key = comp+"_"+sky
-                values = ds[key+"_slope_mean"].values
-                ci = ds[key+"_slope_ci"].values
-                sig = np.abs(values) > ci
+        for comp in ["sw", "lw"]:
+            key = comp+"_"+sky
+            values = ds[key+"_slope_mean"].values
+            ci = ds[key+"_slope_ci"].values
+            sig = np.abs(values) > ci
 
-                pos = np.clip(values, 0, None)
-                neg = np.clip(values, None, 0)
+            pos = np.clip(values, 0, None)
+            neg = np.clip(values, None, 0)
 
-                for i,xi in enumerate(x):
-                    ax.bar(x[i] - width/2, pos[i], width,
-                        bottom=bottom_pos[i],
-                        color=colors[key],
-                        alpha=alpha_light + sig[i]*(1-alpha_light),
-                        label=nicenames[key],
-                    )
+            for i,xi in enumerate(x):
+                ax.bar(x[i] - width/2, pos[i], width,
+                    bottom=bottom_pos[i],
+                    color=colors[key],
+                    alpha=alpha_light + sig[i]*(1-alpha_light),
+                    label=nicenames[key],
+                )
 
-                    ax.bar(x[i] - width/2, neg[i], width,
-                        bottom=bottom_neg[i],
-                        color=colors[key],
-                        alpha=alpha_light + sig[i]*(1-alpha_light),
-                    )
+                ax.bar(x[i] - width/2, neg[i], width,
+                    bottom=bottom_neg[i],
+                    color=colors[key],
+                    alpha=alpha_light + sig[i]*(1-alpha_light),
+                )
 
-                bottom_pos += pos
-                bottom_neg += neg
-            
-            net = ds["net_"+sky+"_slope_mean"].values
-            offset = 0.2
-            if AREA_WEIGHT:
-                offset /= 10
-            for i in range(len(regimes)):
-                ax.text(x[i] - width/2, bottom_pos[i] + offset, f"{net[i]:.2f}",
-                    ha="center", va="top", fontsize=8)
+            bottom_pos += pos
+            bottom_neg += neg
+        
+        net = ds["net_"+sky+"_slope_mean"].values
+        offset = 0.2
+        if AREA_WEIGHT:
+            offset /= 10
+        for i in range(len(regimes)):
+            ax.text(x[i] - width/2, bottom_pos[i] + offset, f"{net[i]:.2f}",
+                ha="center", va="top", fontsize=8)
 
 
         # --- formatting ---
@@ -103,5 +102,7 @@ def do_regime_trend_barchart(regime_trends="pp/regime_mean_trends.nc", extra_fna
         else:
             plt.savefig(f"figures/{out_subdir}regime_trend_barchart_{PLOT_SEASON}{extra_fname}.png",
                     dpi=300, bbox_inches='tight')
-            
-do_regime_trend_barchart()
+
+if __name__ == "__main__":
+    do_regime_trend_barchart(AREA_WEIGHT=True)
+    # do_regime_trend_barchart(AREA_WEIGHT=False)
