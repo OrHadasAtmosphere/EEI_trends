@@ -31,16 +31,28 @@ echo "Computing analytic clear-sky OLR trends for comparison"
 python -m obs_io.OLR_analytic
 
 echo "Making plots"
-for fig in make_figs/*.py; do    
-    module_name=$(basename "$fig" .py)
+# main figs
+python -m make_figs.net_eei
+python -m make_figs.barchart
+python -m make_figs.trends_per_regime
+python -m make_figs.eei_and_drivers
+# supplement figs
+python -m make_figs.all_eei_maps
+python -m make_figs.masks
+python -m make_figs.stcu
+python -m make_figs.clr_OLR_analytic
+python -m make_figs.diff_yrs
 
-    # skip analysis of effect using of different subsets
-    # of CERES record and years of ERA5 on results
-    if [ "$module_name" = "diff_yrs" ]; then
-        echo "Skipping: $fig"
-        continue
-    fi
+# for fig in make_figs/*.py; do    
+#     module_name=$(basename "$fig" .py)
+
+#     # skip analysis of effect using of different subsets
+#     # of CERES record and years of ERA5 on results
+#     if [ "$module_name" = "diff_yrs" ]; then
+#         echo "Skipping: $fig"
+#         continue
+#     fi
     
-    echo "Running: python -m make_figs.$module_name"
-    python -m make_figs.$module_name
-done
+#     echo "Running: python -m make_figs.$module_name"
+#     python -m make_figs.$module_name
+# done

@@ -14,7 +14,7 @@ def regimes_from_clim(fin, fout):
     ds["subsidence_ocean"] = (ds.lsm>-1)*1
     ds["tropical_ascent"] = (ds.lsm>-1)*1
     ds["residual"] = (ds.lsm>-1)*1
-    
+
     # some parameters
     SIGMA_LAT = 1.5
     SIGMA_LON = 1.5
@@ -22,12 +22,11 @@ def regimes_from_clim(fin, fout):
     POLAR_LAT = 60
     SIC_THRESH = 0.1
     LAND_THRESH = 0.1
-    OMEGA_THRESH = 0.0 # was originally 0.0, try 0.01
+    OMEGA_THRESH = 0.0 # was originally 0.0, try 0.005
+    STORM_PROXIMITY_FACTOR = 0.25
     # NH_SLP_FACTOR = 0.2 # try 0.5
     # SH_SLP_FACTOR = 0.3 # try 0.5
-    NH_STORM_FACTOR = 0.3
-    SH_STORM_FACTOR = 0.3
-    
+
     # smooth dataarray
     def smooth(da):
         return gaussian_filter(
@@ -70,8 +69,8 @@ def regimes_from_clim(fin, fout):
     # ds["sh_storms"] = ds.sh_storms.where((ds.lat < 0) & (ds.SLP_var > SH_SLP_FACTOR*ds.SLP_var_max_sh) & (ds.sh_cryosphere < 0.5), 0)
 
     # storm frequency for NH and SH
-    ds["nh_storms"] = ds.nh_storms.where((ds.lat > 0) & (ds.monthly_storm_day_fraction > NH_STORM_FACTOR) & (ds.nh_cryosphere < 0.5), 0)
-    ds["sh_storms"] = ds.sh_storms.where((ds.lat < 0) & (ds.monthly_storm_day_fraction > SH_STORM_FACTOR) & (ds.sh_cryosphere < 0.5), 0)
+    ds["nh_storms"] = ds.nh_storms.where((ds.lat > 0) & (ds.monthly_storm_day_fraction > STORM_PROXIMITY_FACTOR) & (ds.nh_cryosphere < 0.5), 0)
+    ds["sh_storms"] = ds.sh_storms.where((ds.lat < 0) & (ds.monthly_storm_day_fraction > STORM_PROXIMITY_FACTOR) & (ds.sh_cryosphere < 0.5), 0)
 
     # omega
     ds["tropical_ascent"] = ds.tropical_ascent.where((ds.lat >= -TROPICAL_LAT) & (ds.lat <= TROPICAL_LAT) 

@@ -4,29 +4,20 @@ from .ceres import read_ceres_raw
 
 def regime_trend(ds, mask_file, outfile):
     da = ds.drop_sel(season="ANN").drop_vars(["days_in_month"])
-    masks = xr.open_mfdataset(["pp/"+mask_file])
+    masks = xr.open_dataset("pp/"+mask_file).load()
     regimes = [r for r in masks.data_vars if r != "area"]
+    regime_masks = masks[regimes].to_array("regime")
 
     # average over regimes
-    rm = xr.concat(
-        [
-            (da * masks[r])
-            .weighted(masks.area)
-            .mean(("lat", "lon"))
-            .expand_dims(regime=[r])
-            for r in regimes
-        ],
-        dim="regime"
+    rm = (
+        (da * regime_masks)
+        .weighted(masks.area)
+        .mean(("lat", "lon"))
+        .transpose("regime", "season", "year")
     )
 
     # compute area per regime per season
-    area_da = xr.concat(
-        [
-            (masks[r] * masks.area).sum(("lat", "lon")).assign_coords(regime=r)
-            for r in regimes
-        ],
-        dim="regime"
-    )
+    area_da = (regime_masks * masks.area).sum(("lat", "lon"))
     rm["area"] = area_da
     rm["area_fraction"] = area_da / rm.area.sum("regime")
 
