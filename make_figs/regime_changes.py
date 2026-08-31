@@ -178,6 +178,17 @@ def _transition_label(name):
     return f"{REGIME_LABELS[source]} → {REGIME_LABELS[destination]}"
 
 
+def _transition_color(source, destination):
+    source_color = _status_color(source, "unchanged")
+    destination_color = _status_color(destination, "unchanged")
+
+    source_rgb = np.asarray(mcolors.to_rgb(source_color))
+    destination_rgb = np.asarray(mcolors.to_rgb(destination_color))
+
+    return mcolors.to_hex(
+        0.45 * source_rgb + 0.55 * destination_rgb
+    )
+
 def _category_definitions(early, late):
     definitions = []
     for regime in REGIMES:
@@ -206,10 +217,9 @@ def _category_definitions(early, late):
         )
 
     transition_colors = {}
-    palette = plt.get_cmap("tab20").colors
-    for index, name in enumerate(_transition_names()):
+    for name in _transition_names():
         source, destination = name.split("_to_")
-        transition_colors[name] = mcolors.to_hex(palette[index])
+        transition_colors[name] = _transition_color(source, destination)
         definitions.append(
             (
                 name,
