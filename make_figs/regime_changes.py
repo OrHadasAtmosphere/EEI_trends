@@ -15,56 +15,48 @@ import numpy as np
 import xarray as xr
 
 from obs_io.process_masks import (
-    CONFIDENCE_LEVEL,
-    EARLY_OMEGA_YEARS,
-    EARLY_STORM_YEARS,
-    EARLY_YEARS,
-    LAND_THRESH,
-    LATE_STORM_YEARS,
-    LATE_YEARS,
-    OMEGA_THRESH,
     POLAR_LAT,
-    SIC_THRESH,
-    STORM_PROXIMITY_THRESHOLD,
     TROPICAL_LAT,
-    confidence_bounds,
-    period_data,
-    smooth_yearly,
-    storm_proximity_data,
-    valid_years,
+    LAND_THRESH,
+    OMEGA_THRESH,
+    SIC_THRESH,
+    STORM_PROXIMITY_THRESH,
+    smooth,
 )
-from utils.plotting import central_lon, plot_coasts_grid
+from utils.plotting import central_lon, plot_coasts_grid, colors
 
 
-INPUT_CLIMATOLOGY = Path("pp/era5_clim.nc")
+INPUT_EARLY_CLIMATOLOGY = Path("pp/era5_clim.nc")
+INPUT_LATE_CLIMATOLOGY = Path("pp/diff_yrs/era5_clim_2015.nc")
 INPUT_EEI_TRENDS = Path("pp/ceres_trends.nc")
 OUTPUT_DATA = Path("pp/regime_change_eei_contributions.nc")
 OUTPUT_FIGURE = Path("figures/regime_changes_eei.png")
 
 SEASONS = ["MAM", "JJA", "SON", "DJF"]
 SEASON_DAYS = xr.DataArray(
-    [92.0, 92.0, 91.0, 90.65],
-    coords={"season": SEASONS},
-    dims="season",
+    [90.65, 92, 92, 91],
+    coords={"season": ["DJF", "MAM", "JJA", "SON"]},
+    dims="season"
 )
-REGIMES = ["storms", "tropical_ascent", "subsidence_land", "subsidence_ocean"]
+REGIMES = [
+    "storms",
+    "tropical_ascent",
+    "subsidence_land",
+    "subsidence_ocean",
+    "cryosphere",
+]
 REGIME_LABELS = {
-    "storms": "Storm tracks",
-    "tropical_ascent": "Tropical ascent",
-    "subsidence_land": "Subsidence land",
-    "subsidence_ocean": "Subsidence ocean",
+    "storms": "Storms",
+    "tropical_ascent": "Trop. ascent",
+    "subsidence_land": "Sub. land",
+    "subsidence_ocean": "Sub. ocean",
+    "cryosphere": "Cryosphere",
 }
 REGIME_CODES = {name: index + 1 for index, name in enumerate(REGIMES)}
-REGIME_COLORS = {
-    "storms": "#808080",
-    "tropical_ascent": "#800080",
-    "subsidence_land": "#f2d600",
-    "subsidence_ocean": "#00cc22",
-}
 STATUS_LABELS = {
     "unchanged": "unchanged",
-    "added_from_blank": "added from blank",
-    "removed_to_blank": "removed to blank",
+    "added_from_blank": "added from resid.",
+    "removed_to_blank": "removed to resid.",
 }
 
 
@@ -73,19 +65,27 @@ def _blend(color, target, fraction):
     target_rgb = np.asarray(mcolors.to_rgb(target))
     return mcolors.to_hex((1.0 - fraction) * rgb + fraction * target_rgb)
 
-
 def _status_color(regime, status):
-    base = REGIME_COLORS[regime]
+    color_key = {
+        "storms": "nh_storms",
+        "cryosphere": "nh_cryosphere",
+        "subsidence_land": "subsidence_land",
+        "subsidence_ocean": "subsidence_ocean",
+        "tropical_ascent": "tropical_ascent",
+    }[regime]
+
+    base = colors[color_key]
+
     if status == "added_from_blank":
-        return _blend(base, "black", 0.28)
+        return _blend(base, "black", 0.2)
     if status == "removed_to_blank":
-        return _blend(base, "white", 0.62)
+        return _blend(base, "white", 0.8)
     return base
 
 
-def _cryosphere_mask(lsm, siconc_lower):
+def _cryosphere_mask(lsm, siconc):
     nh = (
-        ((lsm.lat >= POLAR_LAT) & (siconc_lower > SIC_THRESH))
+        ((lsm.lat >= POLAR_LAT) & (siconc > SIC_THRESH))
         | ((lsm.lat >= 75) & (lsm > LAND_THRESH))
         | (
             (lsm.lat >= POLAR_LAT)
@@ -95,7 +95,7 @@ def _cryosphere_mask(lsm, siconc_lower):
         )
     )
     sh = (
-        ((lsm.lat <= -POLAR_LAT) & (siconc_lower > SIC_THRESH))
+        ((lsm.lat <= -POLAR_LAT) & (siconc > SIC_THRESH))
         | ((lsm.lat <= -65) & (lsm > LAND_THRESH))
     )
     return nh | sh
@@ -103,9 +103,18 @@ def _cryosphere_mask(lsm, siconc_lower):
 
 def _regime_state(lsm, cryosphere, storm, ascent, descent):
     state = xr.zeros_like(lsm, dtype=np.int8)
-    storm = storm & ~cryosphere
+    state = xr.where(
+        cryosphere,
+        REGIME_CODES["cryosphere"],
+        state,
+    )
+    available = state == 0
+    state = xr.where(
+        available & storm,
+        REGIME_CODES["storms"],
+        state,
+    )
     within_tropics = (lsm.lat >= -TROPICAL_LAT) & (lsm.lat <= TROPICAL_LAT)
-    state = xr.where(storm, REGIME_CODES["storms"], state)
     available = state == 0
     state = xr.where(
         available & within_tropics & ascent,
@@ -126,45 +135,33 @@ def _regime_state(lsm, cryosphere, storm, ascent, descent):
     )
     return state.astype(np.int8)
 
+def calculate_period_states(clim_early, clim_late):
+    lsm = clim_early.lsm
 
-def calculate_period_states(climatology):
-    lsm = period_data(climatology.lsm, EARLY_YEARS).mean("year")
-    siconc_lower, _ = confidence_bounds(
-        period_data(climatology.siconc, EARLY_YEARS)
-    )
-    cryosphere = _cryosphere_mask(lsm, siconc_lower)
-
-    omega = smooth_yearly(valid_years(climatology.omega500))
-    early_omega_lower, early_omega_upper = confidence_bounds(
-        period_data(omega, EARLY_OMEGA_YEARS)
-    )
-    late_omega_lower, late_omega_upper = confidence_bounds(
-        period_data(omega, LATE_YEARS)
-    )
-
-    proximity = storm_proximity_data(climatology)
-    early_storm_lower, _ = confidence_bounds(
-        period_data(proximity, EARLY_STORM_YEARS)
-    )
-    late_storm_lower, _ = confidence_bounds(
-        period_data(proximity, LATE_STORM_YEARS)
-    )
-
+    early_siconc = clim_early.siconc
+    early_cryosphere = _cryosphere_mask(lsm, early_siconc)
+    early_omega = smooth(clim_early.omega500)
+    early_storm = smooth(clim_early.monthly_storm_day_fraction)
     early = _regime_state(
         lsm,
-        cryosphere,
-        early_storm_lower > STORM_PROXIMITY_THRESHOLD,
-        early_omega_upper <= -OMEGA_THRESH,
-        early_omega_lower > OMEGA_THRESH,
+        early_cryosphere,
+        early_storm > STORM_PROXIMITY_THRESH,
+        early_omega <= -OMEGA_THRESH,
+        early_omega > OMEGA_THRESH,
     )
+
+    late_siconc = clim_late.siconc
+    late_cryosphere = _cryosphere_mask(lsm, late_siconc)
+    late_omega = smooth(clim_late.omega500)
+    late_storm = smooth(clim_late.monthly_storm_day_fraction)
     late = _regime_state(
         lsm,
-        cryosphere,
-        late_storm_lower > STORM_PROXIMITY_THRESHOLD,
-        late_omega_upper <= -OMEGA_THRESH,
-        late_omega_lower > OMEGA_THRESH,
+        late_cryosphere,
+        late_storm > STORM_PROXIMITY_THRESH,
+        late_omega <= -OMEGA_THRESH,
+        late_omega > OMEGA_THRESH,
     )
-    return early.sel(season=SEASONS), late.sel(season=SEASONS)
+    return early, late
 
 
 def _transition_names():
@@ -365,17 +362,29 @@ def _plot_bars(axis, contributions, transition_colors):
     axis.axhline(0, color="black", linewidth=0.8)
     axis.set_xticks(x)
     axis.set_xticklabels([REGIME_LABELS[name] for name in REGIMES])
-    axis.set_ylabel("Annual net EEI trend contribution / W m$^{-2}$ decade$^{-1}$")
     axis.spines[["top", "right"]].set_visible(False)
-    axis.set_title("Annual contribution from unchanged, added, and removed areas")
+    axis.set_title("Annual net EEI trend contribution / W m$^{-2}$ dec$^{-1}$", y=0.98)
     return legend
+
+def _legend_sort_key(item):
+    label, _ = item
+
+    for regime in REGIMES:
+        regime_label = REGIME_LABELS[regime]
+        if label.startswith(f"{regime_label}:"):
+            return (REGIMES.index(regime), 0)
+
+        if label.startswith(f"{regime_label} →"):
+            return (REGIMES.index(regime), 1)
+
+    return (len(REGIMES), 0)
 
 
 def make_figure(early, late, contributions, output_path=OUTPUT_FIGURE):
     definitions, transition_colors = _category_definitions(early, late)
     projection = ccrs.Robinson(central_longitude=central_lon)
-    figure = plt.figure(figsize=(17, 14))
-    grid = figure.add_gridspec(3, 2, height_ratios=[1.0, 1.0, 0.8])
+    figure = plt.figure(figsize=(9, 8))
+    grid = figure.add_gridspec(4, 2, height_ratios=[1.0, 1.0, 0.05, 1.1])
     map_axes = np.asarray(
         [
             figure.add_subplot(grid[row, column], projection=projection)
@@ -383,50 +392,40 @@ def make_figure(early, late, contributions, output_path=OUTPUT_FIGURE):
             for column in range(2)
         ]
     ).reshape(2, 2)
-    bar_axis = figure.add_subplot(grid[2, :])
+    bar_axis = figure.add_subplot(grid[3, :])
 
     categories = _plot_maps(map_axes, early, late, definitions)
     bar_legend = _plot_bars(bar_axis, contributions, transition_colors)
 
-    present_codes = set(np.unique(categories.values)) - {0}
-    map_handles = [
-        Patch(facecolor=color, edgecolor="black", label=label)
-        for code, (_, _, color, label) in enumerate(definitions, start=1)
-        if code in present_codes
-    ]
     bar_handles = [
         Patch(facecolor=color, edgecolor="black", label=label)
-        for label, color in bar_legend.items()
+        for label, color in sorted(bar_legend.items(), key=_legend_sort_key)
     ]
-    handles_by_label = {
-        handle.get_label(): handle for handle in map_handles + bar_handles
-    }
     figure.legend(
-        handles_by_label.values(),
-        handles_by_label.keys(),
+        bar_handles,
+        [handle.get_label() for handle in bar_handles],
         loc="lower center",
-        bbox_to_anchor=(0.5, -0.035),
-        ncol=4,
+        bbox_to_anchor=(0.5, -0.05),
+        ncol=5,
         frameon=False,
-        fontsize=8,
+        fontsize=6,
     )
+    
     figure.suptitle(
-        "Seasonal atmospheric-regime changes and their net EEI trend contributions\n"
-        "storms: 2011–2024 minus 1986–2000; omega regimes: "
-        "2016–2025 minus 1991–2000 | "
-        f"one-sided {CONFIDENCE_LEVEL:.0%} confidence bounds",
-        fontsize=15,
+        "Seasonal regime changes and their contributions to net EEI trends:\n"
+        "Late (2015-2025) minus Early (1990-2000) period",
+        fontsize=12,
     )
-    figure.subplots_adjust(hspace=0.15, wspace=0.03, bottom=0.16, top=0.93)
+    figure.subplots_adjust(hspace=0.15, wspace=0.03, bottom=0.16, top=0.88)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    figure.savefig(output_path, dpi=300, bbox_inches="tight", facecolor="white")
+    figure.savefig(output_path, dpi=200, bbox_inches="tight", facecolor="white")
     return figure
 
 
 def main():
-    with xr.open_dataset(INPUT_CLIMATOLOGY) as dataset:
-        climatology = dataset.load()
-    early, late = calculate_period_states(climatology)
+    clim_early = xr.open_dataset(INPUT_EARLY_CLIMATOLOGY).load()
+    clim_late = xr.open_dataset(INPUT_LATE_CLIMATOLOGY).load()
+    early, late = calculate_period_states(clim_early, clim_late)
 
     with xr.open_dataset(INPUT_EEI_TRENDS) as dataset:
         eei_trend = dataset.net.sel(season=SEASONS).load()
@@ -436,11 +435,8 @@ def main():
     contributions.attrs.update(
         {
             "description": "Area-weighted net EEI trend contributions from regime changes",
-            "storm_early_period": "1986-2000",
-            "storm_late_period": "2011-2024",
-            "omega_early_period": "1991-2000",
-            "omega_late_period": "2016-2025",
-            "cryosphere_handling": "fixed exclusion; omitted from plotted categories",
+            "early_period": "1990-2000",
+            "late_period": "2015-2025",
         }
     )
     contributions.to_netcdf(OUTPUT_DATA)

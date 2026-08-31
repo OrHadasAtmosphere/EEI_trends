@@ -2,6 +2,36 @@ import numpy as np
 from scipy.ndimage import gaussian_filter
 import xarray as xr
 
+# some parameters
+SIGMA_LAT = 1.5
+SIGMA_LON = 1.5
+TROPICAL_LAT = 35 # was originally 40, try 35
+POLAR_LAT = 60
+SIC_THRESH = 0.1
+LAND_THRESH = 0.1
+OMEGA_THRESH = 0.0 # was originally 0.0, try 0.005
+STORM_PROXIMITY_THRESH = 0.25
+# NH_SLP_FACTOR = 0.2 # try 0.5
+# SH_SLP_FACTOR = 0.3 # try 0.5
+
+# smooth inputs
+def smooth_filter(da):
+    return gaussian_filter(
+        da,
+        sigma=(SIGMA_LAT, SIGMA_LON),
+        mode=("nearest", "wrap")  # lat, lon
+    )
+def smooth(da):
+    return xr.apply_ufunc(
+        smooth_filter,
+        da,
+        input_core_dims=[["lat", "lon"]],
+        output_core_dims=[["lat", "lon"]],
+        vectorize=True,
+        dask="parallelized",
+        output_dtypes=[da.dtype],
+    )
+
 def regimes_from_clim(fin, fout):
     ds = xr.open_dataset("pp/"+fin)
     
@@ -15,44 +45,10 @@ def regimes_from_clim(fin, fout):
     ds["tropical_ascent"] = (ds.lsm>-1)*1
     ds["residual"] = (ds.lsm>-1)*1
 
-    # some parameters
-    SIGMA_LAT = 1.5
-    SIGMA_LON = 1.5
-    TROPICAL_LAT = 35 # was originally 40, try 35
-    POLAR_LAT = 60
-    SIC_THRESH = 0.1
-    LAND_THRESH = 0.1
-    OMEGA_THRESH = 0.0 # was originally 0.0, try 0.005
-    STORM_PROXIMITY_FACTOR = 0.25
-    # NH_SLP_FACTOR = 0.2 # try 0.5
-    # SH_SLP_FACTOR = 0.3 # try 0.5
-
-    # smooth dataarray
-    def smooth(da):
-        return gaussian_filter(
-            da,
-            sigma=(SIGMA_LAT, SIGMA_LON),
-            mode=("nearest", "wrap")  # lat, lon
-        )
-    
-    ds["omega500"] = xr.apply_ufunc(
-        smooth,
-        ds.omega500,
-        input_core_dims=[["lat", "lon"]],
-        output_core_dims=[["lat", "lon"]],
-        vectorize=True,
-        dask="parallelized",
-        output_dtypes=[ds.omega500.dtype],
-    )
-    ds["SLP_var"] = xr.apply_ufunc(
-        smooth,
-        ds.SLP_var,
-        input_core_dims=[["lat", "lon"]],
-        output_core_dims=[["lat", "lon"]],
-        vectorize=True,
-        dask="parallelized",
-        output_dtypes=[ds.SLP_var.dtype],
-    )
+    # smooth inputs
+    ds["omega500"] = smooth(ds.omega500)
+    ds["SLP_var"] = smooth(ds.SLP_var)
+    ds["monthly_storm_day_fraction"] = smooth(ds.monthly_storm_day_fraction)
     
     
     # define masks
@@ -69,8 +65,8 @@ def regimes_from_clim(fin, fout):
     # ds["sh_storms"] = ds.sh_storms.where((ds.lat < 0) & (ds.SLP_var > SH_SLP_FACTOR*ds.SLP_var_max_sh) & (ds.sh_cryosphere < 0.5), 0)
 
     # storm frequency for NH and SH
-    ds["nh_storms"] = ds.nh_storms.where((ds.lat > 0) & (ds.monthly_storm_day_fraction > STORM_PROXIMITY_FACTOR) & (ds.nh_cryosphere < 0.5), 0)
-    ds["sh_storms"] = ds.sh_storms.where((ds.lat < 0) & (ds.monthly_storm_day_fraction > STORM_PROXIMITY_FACTOR) & (ds.sh_cryosphere < 0.5), 0)
+    ds["nh_storms"] = ds.nh_storms.where((ds.lat > 0) & (ds.monthly_storm_day_fraction > STORM_PROXIMITY_THRESH) & (ds.nh_cryosphere < 0.5), 0)
+    ds["sh_storms"] = ds.sh_storms.where((ds.lat < 0) & (ds.monthly_storm_day_fraction > STORM_PROXIMITY_THRESH) & (ds.sh_cryosphere < 0.5), 0)
 
     # omega
     ds["tropical_ascent"] = ds.tropical_ascent.where((ds.lat >= -TROPICAL_LAT) & (ds.lat <= TROPICAL_LAT) 

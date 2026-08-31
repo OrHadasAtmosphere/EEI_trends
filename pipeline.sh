@@ -45,3 +45,4 @@ python -m make_figs.clr_OLR_analytic
 echo "Checking diff. clim. years"
 python -m obs_io.diff_yrs
 python -m make_figs.diff_yrs
+python -m make_figs.regime_changes
