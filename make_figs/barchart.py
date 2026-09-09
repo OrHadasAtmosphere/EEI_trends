@@ -142,11 +142,20 @@ def do_barchart(regime_trend_file="pp/regime_mean_trends.nc", PLOT_VAR="net", ex
 
     # print numbers
     if PLOT_VAR == "net":
+        print("trend contribution (area-weighted)")
         print(seasons)
         for r in regimes:
             print(r)
             values = ds.sel(regime=r)[PLOT_VAR+"_slope_mean"].values
             ci = ds.sel(regime=r)[PLOT_VAR+"_slope_ci"].values
+            print([f"{v:.2f} ± {c:.2f}" for v, c in zip(values, ci)])
+
+        print("trend absolute (regime-mean)")
+        print(seasons)
+        for r in regimes:
+            print(r)
+            values = (ds[PLOT_VAR+"_slope_mean"]/ds.area_fraction).sel(regime=r).values
+            ci = (ds[PLOT_VAR+"_slope_ci"]/ds.area_fraction).sel(regime=r).values
             print([f"{v:.2f} ± {c:.2f}" for v, c in zip(values, ci)])
 
     # add map inset
