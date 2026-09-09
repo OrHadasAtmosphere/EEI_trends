@@ -374,6 +374,17 @@ def _plot_bars(axis, contributions, transition_colors):
     axis.set_xticklabels([REGIME_LABELS[name] for name in REGIMES])
     axis.spines[["top", "right"]].set_visible(False)
     axis.set_title("Annual net EEI trend contribution / W m$^{-2}$ dec$^{-1}$", y=0.98)
+
+    cont = contributions.net_eei_trend_contribution.sel(season="ANN")
+    for regime in contributions.regime:
+        print(regime.values,
+              f"{cont.sel(regime=regime).sel(component="unchanged").values:.3f}",
+              f"{cont.sel(regime=regime).sum("component").values:.3f}")
+    total_trends = cont.sum("regime").sum("component").values
+    unchanged_regime_trends = cont.sum("regime").sel(component="unchanged").values
+    print("trends from unchanged, total trends, percentage")
+    print(f"{unchanged_regime_trends:.3f}, {total_trends:.3f}, {unchanged_regime_trends/total_trends*100:.0f}%")
+    
     return legend
 
 def _legend_sort_key(item):
