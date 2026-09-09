@@ -5,14 +5,12 @@ import xarray as xr
 # some parameters
 SIGMA_LAT = 1.5
 SIGMA_LON = 1.5
-TROPICAL_LAT = 35 # was originally 40, try 35
+TROPICAL_LAT = 35
 POLAR_LAT = 60
 SIC_THRESH = 0.1
 LAND_THRESH = 0.1
-OMEGA_THRESH = 0.0 # was originally 0.0, try 0.005
+OMEGA_THRESH = 0.0
 STORM_PROXIMITY_THRESH = 0.25
-# NH_SLP_FACTOR = 0.2 # try 0.5
-# SH_SLP_FACTOR = 0.3 # try 0.5
 
 # smooth inputs
 def smooth_filter(da):
@@ -58,12 +56,6 @@ def regimes_from_clim(fin, fout):
     ds["sh_cryosphere"] = ds.sh_cryosphere.where(((ds.lat <= -POLAR_LAT) & (ds.siconc > SIC_THRESH)) # sea ice >60
                                         | ((ds.lat <= -65) & (ds.lsm > LAND_THRESH)), 0) # any land >65
     
-    # SLP_var_max for NH and SH
-    ds["SLP_var_max_nh"] = ds.SLP_var.where(ds.lat > 0).max(dim=("lat", "lon"))
-    ds["SLP_var_max_sh"] = ds.SLP_var.where(ds.lat < 0).max(dim=("lat", "lon"))
-    # ds["nh_storms"] = ds.nh_storms.where((ds.lat > 0) & (ds.SLP_var > NH_SLP_FACTOR*ds.SLP_var_max_nh) & (ds.nh_cryosphere < 0.5), 0)
-    # ds["sh_storms"] = ds.sh_storms.where((ds.lat < 0) & (ds.SLP_var > SH_SLP_FACTOR*ds.SLP_var_max_sh) & (ds.sh_cryosphere < 0.5), 0)
-
     # storm frequency for NH and SH
     ds["nh_storms"] = ds.nh_storms.where((ds.lat > 0) & (ds.monthly_storm_day_fraction > STORM_PROXIMITY_THRESH) & (ds.nh_cryosphere < 0.5), 0)
     ds["sh_storms"] = ds.sh_storms.where((ds.lat < 0) & (ds.monthly_storm_day_fraction > STORM_PROXIMITY_THRESH) & (ds.sh_cryosphere < 0.5), 0)
@@ -84,7 +76,7 @@ def regimes_from_clim(fin, fout):
                                         & (ds.subsidence_land < 0.5) & (ds.subsidence_ocean < 0.5)
                                         & (ds.tropical_ascent < 0.5), 0)
     
-    masks = ds.drop_vars(["lsm","siconc","omega500","SLP_var","SLP_var_max_nh","SLP_var_max_sh","monthly_storm_day_fraction"])
+    masks = ds.drop_vars(["lsm","siconc","omega500","SLP_var","monthly_storm_day_fraction"])
     
     # add grid-area
     R = 6371000  # radius of Earth / m
