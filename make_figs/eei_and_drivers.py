@@ -77,5 +77,5 @@ if __name__ == "__main__":
     drivers_trends["siconc"] = drivers_trends["siconc"].where(np.abs(drivers_trends["siconc"]) >= 0.01, np.nan)
     
     drivers_trends = drivers_trends.load()
-    eei_and_drivers_maps(eei_trend, drivers_trends, savefile="eei_drivers_maps_aod.png")
+    eei_and_drivers_maps(eei_trend, drivers_trends, savefile="eei_drivers_maps.pdf")
     

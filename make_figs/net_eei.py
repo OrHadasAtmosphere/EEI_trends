@@ -32,4 +32,4 @@ fig.colorbar(colormap, ax=ax_map, orientation="vertical", location="left",
              shrink=0.8, pad=-0.05, extend="both", ticks = [-5, -2.5, 0, 2.5, 5],
              label="Net EEI trend / W m$^{-2}$ dec$^{-1}$",)
 
-plt.savefig("figures/net_eei.png", dpi=300, facecolor="w", bbox_inches="tight")
+plt.savefig("figures/net_eei.pdf", dpi=300, facecolor="w", bbox_inches="tight")

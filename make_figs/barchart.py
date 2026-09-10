@@ -224,7 +224,7 @@ def do_barchart(regime_trend_file="pp/regime_mean_trends.nc", PLOT_VAR="net", ex
             collection.set_edgecolor(colors[r])
             collection.set_linewidth(0.0)  # remove polygon edges
 
-    plt.savefig(f"figures/{out_subdir}trend_barchart_{PLOT_VAR}{extra_fname}.png",
+    plt.savefig(f"figures/{out_subdir}trend_barchart_{PLOT_VAR}{extra_fname}.pdf",
                 dpi=300, bbox_inches='tight')
 
 if __name__ == "__main__":

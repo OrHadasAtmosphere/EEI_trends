@@ -97,10 +97,10 @@ def do_regime_trend_barchart(regime_trends="pp/regime_mean_trends.nc", AREA_WEIG
         ax.legend(by_label.values(), by_label.keys(), frameon=False, ncol=2, loc=3)
 
         if AREA_WEIGHT:
-            plt.savefig(f"figures/{out_subdir}regime_trend_barchart_{PLOT_SEASON}_areaweight{extra_fname}.png",
+            plt.savefig(f"figures/{out_subdir}regime_trend_barchart_{PLOT_SEASON}_areaweight{extra_fname}.pdf",
                     dpi=300, bbox_inches='tight')
         else:
-            plt.savefig(f"figures/{out_subdir}regime_trend_barchart_{PLOT_SEASON}{extra_fname}.png",
+            plt.savefig(f"figures/{out_subdir}regime_trend_barchart_{PLOT_SEASON}{extra_fname}.pdf",
                     dpi=300, bbox_inches='tight')
 
 if __name__ == "__main__":

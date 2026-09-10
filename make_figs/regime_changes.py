@@ -30,7 +30,7 @@ INPUT_EARLY_CLIMATOLOGY = Path("pp/era5_clim.nc")
 INPUT_LATE_CLIMATOLOGY = Path("pp/diff_yrs/era5_clim_2015.nc")
 INPUT_EEI_TRENDS = Path("pp/ceres_trends.nc")
 OUTPUT_DATA = Path("pp/regime_change_eei_contributions.nc")
-OUTPUT_FIGURE = Path("figures/regime_changes_eei.png")
+OUTPUT_FIGURE = Path("figures/regime_changes_eei.pdf")
 
 SEASONS = ["MAM", "JJA", "SON", "DJF"]
 SEASON_DAYS = xr.DataArray(
@@ -322,6 +322,7 @@ def _plot_maps(axes, early, late, definitions):
             cmap=cmap,
             norm=norm,
             shading="auto",
+            rasterized=True,
         )
         plot_coasts_grid(axis)
         axis.set_global()

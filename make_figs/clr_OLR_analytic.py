@@ -96,4 +96,4 @@ for ax in axes.flatten():
 
 plot_colorbar(fig, p, "LW,clr EEI trend / W m$^{-2}$ dec$^{-1}$", [0.3, -0.05, 0.4, 0.02], lim=clim)
 
-plt.savefig("figures/clr_OLR_analytic_"+rh_var+".png", dpi=300, facecolor="w", bbox_inches="tight")
+plt.savefig("figures/clr_OLR_analytic_"+rh_var+".pdf", dpi=300, facecolor="w", bbox_inches="tight")

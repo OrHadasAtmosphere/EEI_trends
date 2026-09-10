@@ -14,5 +14,4 @@ Files were downloaded from the [LAADS DAAC](https://ladsweb.modaps.eosdis.nasa.g
 
 #### Storm metrics:
 
-1) SLP variance
-2) Cyclone/anticyclone proximity
+Cyclone/anticyclone tracks are from [(Hadas and Kaspi, 2026)](https://doi.org/10.1038/s41467-026-71784-3). Storm tracks are defined as areas within 1000 km of a storm at least 25% of the time. This metric is saved in the file `cyclone_anticyclone_1000km_fraction_1986_2024.nc`.
