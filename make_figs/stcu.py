@@ -191,4 +191,4 @@ for name, lat_min, lat_max, lon_min, lon_max, color in stcu_deck_boxes:
             alpha=0.5,
             transform=ccrs.PlateCarree(),
         )
-fig.savefig(f"figures/stcu_ssts.png", dpi=500, bbox_inches='tight')
+fig.savefig(f"figures/stcu_ssts.pdf", dpi=500, bbox_inches='tight')

@@ -43,12 +43,10 @@ def eei_maps(da, savefile):
                 ax.annotate(nicenames[varj], xy=(-0.05, 0.5), xycoords="axes fraction", rotation=90, ha="center", va="center", fontweight="bold")
     
     cb = plot_colorbar(fig, cf, "EEI trend / W m$^{-2}$ dec$^{-1}$", [0.3, -0.03, 0.4, 0.01])
-    # cb.set_label("EEI trend / W m$^{-2}$ dec$^{-1}$", fontsize=14)
-    # cb.ax.tick_params(labelsize=14)
     plt.savefig("figures/"+savefile, dpi=300, facecolor="w", bbox_inches="tight")
 
 
 
 ds_trend = xr.open_mfdataset(["pp/ceres_trends.nc"])
 da = ds_trend.load()
-eei_maps(da, savefile="eei_all_maps.png")
+eei_maps(da, savefile="eei_all_maps.pdf")
