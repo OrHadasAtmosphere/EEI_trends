@@ -32,4 +32,10 @@ fig.colorbar(colormap, ax=ax_map, orientation="vertical", location="left",
              shrink=0.8, pad=-0.05, extend="both", ticks = [-5, -2.5, 0, 2.5, 5],
              label="Net EEI trend / W m$^{-2}$ dec$^{-1}$",)
 
+# a) and b) labels positioned by hand
+ax_timeseries.text(0.025, 1.05, "a)", transform=ax_timeseries.transAxes, 
+                   fontsize=11, va="bottom", ha="right")
+ax_map.text(0.025, 0.95, "b)", transform=ax_map.transAxes, 
+            fontsize=11, va="bottom", ha="right")
+
 plt.savefig("figures/net_eei.pdf", dpi=300, facecolor="w", bbox_inches="tight")

@@ -1,6 +1,7 @@
 import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
 
 PLOT_SEASON = "ANN"
 
@@ -91,10 +92,9 @@ def do_regime_trend_barchart(regime_trends="pp/regime_mean_trends.nc", AREA_WEIG
         ax.spines["top"].set_visible(False)
         ax.spines["right"].set_visible(False)
 
-        # legend (clean duplicates)
-        handles, labels = ax.get_legend_handles_labels()
-        by_label = dict(zip(labels, handles))
-        ax.legend(by_label.values(), by_label.keys(), frameon=False, ncol=2, loc=3)
+        # create clean legend from dictionaries
+        legend_handles = [Patch(facecolor=colors[k], label=nicenames[k]) for k in nicenames]
+        ax.legend(handles=legend_handles, frameon=False, ncol=2, loc=3)
 
         if AREA_WEIGHT:
             plt.savefig(f"figures/{out_subdir}regime_trend_barchart_{PLOT_SEASON}_areaweight{extra_fname}.pdf",
