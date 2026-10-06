@@ -28,7 +28,11 @@ def seasonal_means(ds):
     return xr.concat(all, dim="season")
 
 def to_trend(ds):
-    ds_trend = ds.polyfit("year",1).sel(degree=1).drop_vars(["degree","days_in_month_polyfit_coefficients"])*10
+    ds_trend = ds.polyfit("year",1).sel(degree=1).drop_vars(["degree"])*10
+    try:
+        ds_trend = ds_trend.drop_vars(["days_in_month_polyfit_coefficients"])
+    except:
+        print("no days variable. continuing.")
     ds_trend = ds_trend.rename({
         v: v.replace("_polyfit_coefficients", "")
         for v in ds_trend.data_vars
