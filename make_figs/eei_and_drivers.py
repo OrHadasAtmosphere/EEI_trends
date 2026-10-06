@@ -10,8 +10,6 @@ from matplotlib.colors import LinearSegmentedColormap
 colors = ["orange", "white", "cornflowerblue"]
 orange_white_blue = LinearSegmentedColormap.from_list("orange_white_blue", colors)
 
-from obs_io import to_trend, add_weights, march_to_feb_years, seasonal_means
-
 nicenames = {
     "net":"Net,",
     "lw":"LW,",
