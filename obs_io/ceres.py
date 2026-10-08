@@ -1,6 +1,6 @@
 import xarray as xr
 
-from . import to_trend, add_weights, march_to_feb_years, seasonal_means
+from . import add_weights, march_to_feb_years, seasonal_means
 from utils import global_mean, trend_and_ci
 
 def read_ceres_raw(pathname="raw_data/CERES_EBAF-TOA_Ed4.2.1_Subset_200003-202602.nc"):
@@ -22,13 +22,18 @@ def read_ceres_raw(pathname="raw_data/CERES_EBAF-TOA_Ed4.2.1_Subset_200003-20260
         .pipe(add_weights)
         .pipe(march_to_feb_years)
         .pipe(seasonal_means)
+        .chunk({"year": -1})
     )
 
 if __name__ == "__main__":
     ds = read_ceres_raw()
     
     # save linear trends
-    to_trend(ds).to_netcdf(f"pp/ceres_trends.nc")
+    trends = trend_and_ci(ds, alpha=0.5)
+    trend_vars = [v for v in trends.data_vars if v.endswith(("_slope_mean", "_slope_ci"))]
+    trends = trends[trend_vars]
+    print(trends)
+    trends.to_netcdf("pp/ceres_trends.nc")
     print("done linear trend")
     
     # save global-mean

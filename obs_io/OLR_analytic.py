@@ -5,7 +5,7 @@ import xesmf as xe
 
 np.seterr(divide="ignore", invalid="ignore")
 
-from obs_io import add_weights, march_to_feb_years, seasonal_means
+from obs_io import to_trend, add_weights, march_to_feb_years, seasonal_means
 from obs_io.clrsky_helper import T_strat, get_gammaLR, get_Trad_total, OLR_from_Tem
 
 rh_var = "crh_600_400"
@@ -55,14 +55,6 @@ nu_da = xr.DataArray(
 meanTs = add_weights(ts).weighted(ts.days_in_month).mean("time").persist()
 meanRH = add_weights(rh).weighted(rh.days_in_month).mean("time").persist()
 meanco2 = add_weights(co2).weighted(co2.days_in_month).mean("time").persist()
-
-def to_trend(ds):
-    ds_trend = ds.polyfit("year",1).sel(degree=1).drop_vars(["degree"])*10
-    ds_trend = ds_trend.rename({
-        v: v.replace("_polyfit_coefficients", "")
-        for v in ds_trend.data_vars
-    })
-    return ds_trend
 
 def olr_timeseries_to_lwclr_trend(ds):
     lwclr_ts = seasonal_means(march_to_feb_years(add_weights(ds))) * -1

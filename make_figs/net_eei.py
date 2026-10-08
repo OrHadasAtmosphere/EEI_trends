@@ -26,7 +26,18 @@ ax_timeseries.legend(frameon=False)
 ax_timeseries.spines["top"].set_visible(False)
 ax_timeseries.spines["right"].set_visible(False)
 
-colormap = plot_colormesh(ax_map, ann_trend.net)
+colormap = plot_colormesh(ax_map, ann_trend.net_slope_mean)
+non_sig = abs(ann_trend.net_slope_mean) < ann_trend.net_slope_ci
+ax_map.contourf(
+    ann_trend.lon,
+    ann_trend.lat,
+    non_sig,
+    levels=[0.5, 1.5],
+    hatches=[".."],
+    colors="none",
+    transform=ccrs.PlateCarree(),
+)
+
 plot_coasts_grid(ax_map)
 fig.colorbar(colormap, ax=ax_map, orientation="vertical", location="left", 
              shrink=0.8, pad=-0.05, extend="both", ticks = [-5, -2.5, 0, 2.5, 5],
