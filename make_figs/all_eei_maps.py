@@ -30,7 +30,7 @@ def eei_maps(da, savefile):
         for j,varj in enumerate(["net_clr","sw_clr","lw_clr","net_cre","sw_cre","lw_cre"]):
             ax = axes[j,i]
     
-            t = da.sel(season=seasoni)[varj]
+            t = da.sel(season=seasoni)[varj+"_slope_mean"]
             trend_gm = global_mean(t).values
             cf = plot_colormesh(ax, t)
     
