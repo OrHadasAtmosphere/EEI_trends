@@ -377,14 +377,16 @@ def _plot_bars(axis, contributions, transition_colors):
     axis.set_title("Annual net EEI trend contribution / W m$^{-2}$ dec$^{-1}$", y=0.98)
 
     cont = contributions.net_eei_trend_contribution.sel(season="ANN")
+    print("trends from unchanged, total trends, percentage")
     for regime in contributions.regime:
         print(regime.values,
-              f"{cont.sel(regime=regime).sel(component="unchanged").values:.3f}",
-              f"{cont.sel(regime=regime).sum("component").values:.3f}")
+              f"{cont.sel(regime=regime).sel(component="unchanged").values:.3f},",
+              f"{cont.sel(regime=regime).sum("component").values:.3f},",
+              f"{cont.sel(regime=regime).sel(component="unchanged").values / cont.sel(regime=regime).sum("component").values * 100:.0f}%"
+             )
     total_trends = cont.sum("regime").sum("component").values
     unchanged_regime_trends = cont.sum("regime").sel(component="unchanged").values
-    print("trends from unchanged, total trends, percentage")
-    print(f"{unchanged_regime_trends:.3f}, {total_trends:.3f}, {unchanged_regime_trends/total_trends*100:.0f}%")
+    print(f"global {unchanged_regime_trends:.3f}, {total_trends:.3f}, {unchanged_regime_trends/total_trends*100:.0f}%")
     
     return legend
 
@@ -450,7 +452,7 @@ def main():
     early, late = calculate_period_states(clim_early, clim_late)
 
     with xr.open_dataset(INPUT_EEI_TRENDS) as dataset:
-        eei_trend = dataset.net.sel(season=SEASONS).load()
+        eei_trend = dataset.net_slope_mean.sel(season=SEASONS).load()
     latitude_area = np.cos(np.deg2rad(early.lat))
     area = latitude_area.broadcast_like(early)
     contributions = calculate_contributions(early, late, eei_trend, area)
