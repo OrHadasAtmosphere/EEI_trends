@@ -11,7 +11,7 @@ mask_union = ta.any(dim="season")
 lon_vals = mask_union.lon.values
 lat_vals = mask_union.lat.values
 
-lw_clr_ceres = xr.open_dataset("pp/ceres_trends.nc").lw_clr.sel(season="ANN").where(mask_union)
+lw_clr_ceres = xr.open_dataset("pp/ceres_trends.nc").lw_clr_slope_mean.sel(season="ANN").where(mask_union)
 weights = np.cos(np.deg2rad(lw_clr_ceres.lat))
 
 rh_var = "crh_600_400"

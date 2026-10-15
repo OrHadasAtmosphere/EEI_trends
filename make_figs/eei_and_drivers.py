@@ -36,7 +36,7 @@ def eei_and_drivers_maps(eei, driver, savefile):
         for j,varj in enumerate(["net","lw","sw"]):
             ax = axes[i,j]
     
-            t = eei[varj+vari]
+            t = eei[varj+vari+"_slope_mean"]
             trend_gm = global_mean(t).values
             cf = plot_colormesh(ax, t)
     

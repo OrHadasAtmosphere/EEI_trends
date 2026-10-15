@@ -10,7 +10,7 @@ from utils.plotting import plot_colormesh, plot_coasts_grid, plot_colorbar
 from utils.plotting import colors, hatches, edge_band
 
 
-net = xr.open_mfdataset(["pp/ceres_trends.nc"]).net.load()
+net = xr.open_mfdataset(["pp/ceres_trends.nc"]).net_slope_mean.load()
 masks = xr.open_dataset("pp/regime_masks.nc").load()
 
 regime_names = list(masks.data_vars)[:-1]

@@ -82,7 +82,7 @@ for (_, lat_min, lat_max, lon_min, lon_max, color) in stcu_deck_boxes:
 
     for season in ["MAM", "JJA", "SON", "DJF"]:
         sst_all = drivers_trends.sst.sel(season=season)
-        cre_all = ceres.net_cre.sel(season=season)
+        cre_all = ceres.net_cre_slope_mean.sel(season=season)
         region = subsidence.sel(season=season)
 
         # driver and CRE values within box, subsidence ocean mask
@@ -169,7 +169,7 @@ for name, lat_min, lat_max, lon_min, lon_max, color in stcu_deck_boxes:
         bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.7, "pad": 1.0}, zorder=6,
     )
 
-    data_for_plot = ceres.net_cre.sel(season='ANN')
+    data_for_plot = ceres.net_cre_slope_mean.sel(season='ANN')
 
     if lon_min < 0 and lon_max > 0:
         # split into two if region straddles 0 deg lon
