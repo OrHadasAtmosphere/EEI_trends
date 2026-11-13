@@ -3,8 +3,8 @@ import xarray as xr
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 
-from utils import global_mean
-from utils.plotting import central_lon, plot_colormesh, plot_coasts_grid, plot_colorbar
+from ..utils import global_mean
+from ..utils.plotting import central_lon, plot_colormesh, plot_coasts_grid, plot_colorbar
 
 from matplotlib.colors import LinearSegmentedColormap
 colors = ["orange", "white", "cornflowerblue"]

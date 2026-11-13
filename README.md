@@ -4,50 +4,40 @@
 
 This repository supports a decomposition of observed EEI trends into dynamical regimes and a process-based analysis of their origin.
 
-## Environment Setup with conda/micromamba
+## setup with pixi
 
-Using a package manager like `micromamba`, `conda`, `mamba`, `miniconda`, or another serpentine permutation ensures reproducibility, forward compatibility, and ease of collaboration. We provide an `environment.yaml` with fixed dependencies, configurable as follows:
+We use [Pixi](https://pixi.sh/) to manage Python packages and their dependencies. Pixi handles both conda packages (like `esmpy`) and pip packages in a single environment, eliminating the need for separate package managers.
 
-```bash
-micromamba env create -f environment.yaml
-micromamba activate eei-env
-```
-
-## Package installation and running scripts
-
-The code is configured as a Python package to facilitate cross-file dependencies and a centralization of common tools. After activating the Python environment, install the package:
+First install pixi if you don't already have it:
 
 ```bash
-pip install .
+# macOS/Linux
+curl -fsSL https://pixi.sh/install.sh | bash
+
+# Windows (PowerShell)
+iwr -useb https://pixi.sh/install.ps1 | iex
 ```
 
-Note: for development, you probably want to install the package in editor mode:
-```bash
-pip install -e .
-```
-
-To run scripts using the modular structure used here, use the syntax:
-```bash 
-python -m module.script
-```
-
-Once the items described in [this README](raw_data/README.md) are downloaded to `raw_data/`, `pipeline.sh` executes all necessary commands to analyze data and to generate figures. You can run this with
+Then set up the environment with
 
 ```bash
-bash pipeline.sh
+pixi install
+
+pixi run setup
 ```
 
-or simply execute the commands contained in the file at your leisure.
+Once the items described in [this README](raw_data/README.md) are downloaded to `raw_data/`, you can run processing, analysis, and plotting with commands grouped into sub tasks or by specific task, e.g.:
 
-```note
-The pipeline excludes all tasks related to altering the time periods used for analysis by
-    (1) removing the first and last five years of CERES data
-    (2) shifting the climatological period of ERA5 data used to define the dynamical regimes
-
-The infrastructure for these tasks is found under `diff_yrs` modules and subfolders.
+```bash
+pixi run process-data # downloads ERA5 data, processes to netcdfs with regimes
+pixi run analysis # performs further computations on regimes and pre-processed data
+pixi run main-plots # makes plots for the main manuscript
+pixi run all # runs all prior commands, plus supplemental figures and sensitivity analyses
 ```
 
-## For Windows users:
+More commands, defined in `pixi.toml` can be also be displayed with `pixi run`.
+
+## Windows users:
 
 Our dependency on `xesmf` unfortunately creates problems for Windows users causing our dependencies to be incompatible with your operating system.
 

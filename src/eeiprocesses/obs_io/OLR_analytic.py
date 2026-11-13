@@ -5,8 +5,8 @@ import xesmf as xe
 
 np.seterr(divide="ignore", invalid="ignore")
 
-from obs_io import to_trend, add_weights, march_to_feb_years, seasonal_means
-from obs_io.clrsky_helper import T_strat, get_gammaLR, get_Trad_total, OLR_from_Tem
+from . import to_trend, add_weights, march_to_feb_years, seasonal_means
+from .clrsky_helper import T_strat, get_gammaLR, get_Trad_total, OLR_from_Tem
 
 rh_var = "crh_600_400"
 

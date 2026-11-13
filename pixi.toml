@@ -1,0 +1,74 @@
+[workspace]
+name = "eeiprocesses"
+version = "0.1.0"
+description = "process-based analysis of EEI trends"
+authors = [
+    "Clare Singer <Clare.Singer@colorado.edu>",
+    "Or Hadas <or.hadas@weizmann.ac.il>",
+    "Rowan Orlijan-Rhyne <rowan.orlijan-rhyne@mpimet.mpg.de>",
+]
+channels = ["conda-forge"]
+platforms = ["osx-64", "osx-arm64", "linux-64"]
+
+[dependencies]
+python = ">=3.11"
+pip = "*"
+cf-xarray = ">=0.11.0"
+matplotlib = ">=3.10.9"
+numpy = ">=2.4.3"
+requests = ">=2.33.1"
+xarray = ">=2026.4.0"
+pandas = ">=3.0.2"
+dask = ">=2026.3.0"
+cartopy = ">=0.25.0"
+cdsapi = ">=0.7.7"
+scipy = ">=1.17.1"
+metpy = "*"
+netcdf4 = ">=1.7.4"
+xesmf = ">=0.9.2"
+seaborn = ">=0.13.2"
+esmpy = "*"
+
+[tasks]
+# package
+setup = "python -m pip install -e ."
+
+# io
+process-ceres = "python -m eeiprocesses.obs_io.ceres"
+download-era5-drivers = "python -m eeiprocesses.obs_io.download_era5_drivers"
+download-era5-masks = "python -m eeiprocesses.obs_io.download_era5_masks"
+process-era5clim = "python -m eeiprocesses.obs_io.process_era5clim"
+process-masks = "python -m eeiprocesses.obs_io.process_masks"
+process-data = { depends-on = ["process-ceres", "download-era5-drivers", "download-era5-masks", "process-era5clim", "process-masks"] }
+
+# analysis
+process-ceres-regimes = "python -m eeiprocesses.obs_io.ceres_regimes"
+process-crh = "python -m eeiprocesses.obs_io.process_CRH"
+process-drivers = "python -m eeiprocesses.obs_io.process_drivers"
+olr-analytic = "python -m eeiprocesses.obs_io.OLR_analytic"
+analysis = { depends-on = ["process-ceres-regimes", "process-crh", "process-drivers", "olr-analytic"] }
+
+# main plots
+plot-net-eei = "python -m eeiprocesses.make_figs.net_eei"
+plot-barchart = "python -m eeiprocesses.make_figs.barchart"
+plot-trends-per-regime = "python -m eeiprocesses.make_figs.trends_per_regime"
+plot-eei-and-drivers = "python -m eeiprocesses.make_figs.eei_and_drivers"
+main-plots = { depends-on = ["plot-net-eei", "plot-barchart", "plot-trends-per-regime", "plot-eei-and-drivers"] }
+
+# supplement plots
+plot-all-eei-maps = "python -m eeiprocesses.make_figs.all_eei_maps"
+plot-masks = "python -m eeiprocesses.make_figs.masks"
+plot-stcu = "python -m eeiprocesses.make_figs.stcu"
+plot-clr-olr-analytic = "python -m eeiprocesses.make_figs.clr_OLR_analytic"
+supplement-plots = { depends-on = ["plot-all-eei-maps", "plot-masks", "plot-stcu", "plot-clr-olr-analytic"] }
+
+plots = { depends-on = ["make-main-plots", "make-supplement-plots"] }
+
+# sensitivity
+diff-yrs = "python -m eeiprocesses.obs_io.diff_yrs"
+plot-diff-yrs = "python -m eeiprocesses.make_figs.diff_yrs"
+plot-regime-changes = "python -m eeiprocesses.make_figs.regime_changes"
+sensitivity = { depends-on = ["diff-yrs", "plot-diff-yrs", "plot-regime-changes"] }
+
+# pipeline
+all = { depends-on = ["process-data", "analysis", "plots", "sensitivity"] }

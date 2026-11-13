@@ -3,8 +3,8 @@ import xarray as xr
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 from matplotlib.patches import Patch
-from utils.plotting import colors, hatches, hatches_legend
-from utils.plotting import central_lon, plot_coasts_grid, edge_band
+from ..utils.plotting import colors, hatches, hatches_legend
+from ..utils.plotting import central_lon, plot_coasts_grid, edge_band
 
 def do_barchart(regime_trend_file="pp/regime_mean_trends.nc", PLOT_VAR="net", extra_fname="", out_subdir=""):
     ds = xr.open_dataset(regime_trend_file)

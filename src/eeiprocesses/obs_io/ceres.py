@@ -1,7 +1,7 @@
 import xarray as xr
 
 from . import add_weights, march_to_feb_years, seasonal_means
-from utils import global_mean, trend_and_ci
+from ..utils import global_mean, trend_and_ci
 
 def read_ceres_raw(pathname="raw_data/CERES_EBAF-TOA_Ed4.2.1_Subset_200003-202602.nc"):
     ds = xr.open_mfdataset([pathname])

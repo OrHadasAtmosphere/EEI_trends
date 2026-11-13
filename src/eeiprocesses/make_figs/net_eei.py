@@ -2,7 +2,7 @@ import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
 import xarray as xr
 
-from utils.plotting import central_lon, plot_colormesh, plot_coasts_grid, plot_colorbar
+from ..utils.plotting import central_lon, plot_colormesh, plot_coasts_grid, plot_colorbar
 
 ds_trend = xr.open_mfdataset(["pp/ceres_trends.nc"])
 ann_trend = ds_trend.sel(season="ANN").load()
