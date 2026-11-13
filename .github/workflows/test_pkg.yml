@@ -22,3 +22,6 @@ jobs:
 
       - name: Install package
         run: pixi run setup
+
+      - name: make plots
+        run: pixi run main-plots
