@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import xarray as xr
 
-from obs_io.process_masks import (
+from ..obs_io.process_masks import (
     POLAR_LAT,
     TROPICAL_LAT,
     LAND_THRESH,
@@ -23,7 +23,7 @@ from obs_io.process_masks import (
     STORM_PROXIMITY_THRESH,
     smooth,
 )
-from utils.plotting import central_lon, plot_coasts_grid, colors
+from ..utils.plotting import central_lon, plot_coasts_grid, colors
 
 
 INPUT_EARLY_CLIMATOLOGY = Path("pp/era5_clim.nc")

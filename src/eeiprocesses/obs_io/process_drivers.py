@@ -3,7 +3,7 @@ import os
 import xesmf as xe
 import numpy as np
 from . import add_weights, march_to_feb_years, seasonal_means, to_trend
-from utils.calc_EIS import calc_EIS
+from ..utils.calc_EIS import calc_EIS
 import warnings
 
 warnings.filterwarnings(

@@ -3,8 +3,8 @@ import xarray as xr
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 
-from utils import global_mean
-from utils.plotting import central_lon, plot_colormesh, plot_coasts_grid, plot_colorbar
+from ..utils import global_mean
+from ..utils.plotting import central_lon, plot_colormesh, plot_coasts_grid, plot_colorbar
 
 from matplotlib.colors import LinearSegmentedColormap
 colors = ["orange", "white", "cornflowerblue"]
@@ -73,7 +73,7 @@ if __name__ == "__main__":
     eei_trend = xr.open_dataset("pp/ceres_trends.nc").sel(season="ANN").load()
     drivers_trends = xr.open_dataset("pp/era5_drivers_trends.nc").sel(season="ANN")
     drivers_trends["siconc"] = drivers_trends["siconc"].where(np.abs(drivers_trends["siconc"]) >= 0.01, np.nan)
-    
+
     drivers_trends = drivers_trends.load()
     eei_and_drivers_maps(eei_trend, drivers_trends, savefile="eei_drivers_maps.pdf")
     

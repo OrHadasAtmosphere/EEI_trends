@@ -1,5 +1,5 @@
 import xarray as xr
-from utils import trend_and_ci
+from ..utils import trend_and_ci
 from .ceres import read_ceres_raw
 
 def regime_trend(ds, mask_file, outfile):

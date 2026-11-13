@@ -1,7 +1,7 @@
 import xarray as xr
 
 from . import add_weights, march_to_feb_years, seasonal_means
-from utils import global_mean, trend_and_ci
+from ..utils import global_mean, trend_and_ci
 
 def read_ceres_raw(pathname="raw_data/CERES_EBAF-TOA_Ed4.2.1_Subset_200003-202602.nc"):
     ds = xr.open_mfdataset([pathname])
@@ -27,11 +27,18 @@ def read_ceres_raw(pathname="raw_data/CERES_EBAF-TOA_Ed4.2.1_Subset_200003-20260
 
 if __name__ == "__main__":
     ds = read_ceres_raw()
+
+    def rename_var(var):
+        if var.endswith("slope_ci"):
+            return var
+        elif var.endswith("slope_mean"):
+            return var[:-11]
     
     # save linear trends
     trends = trend_and_ci(ds, alpha=0.5)
     trend_vars = [v for v in trends.data_vars if v.endswith(("_slope_mean", "_slope_ci"))]
     trends = trends[trend_vars]
+    trends = trends.rename({v: rename_var(v) for v in trends.data_vars})
     print(trends)
     trends.to_netcdf("pp/ceres_trends.nc")
     print("done linear trend")

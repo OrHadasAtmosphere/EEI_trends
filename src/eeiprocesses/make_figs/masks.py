@@ -5,9 +5,9 @@ import cartopy.crs as ccrs
 
 import matplotlib.patches as mpatches
 
-from utils import global_mean
-from utils.plotting import plot_colormesh, plot_coasts_grid, plot_colorbar
-from utils.plotting import colors, hatches, edge_band
+from ..utils import global_mean
+from ..utils.plotting import plot_colormesh, plot_coasts_grid, plot_colorbar
+from ..utils.plotting import colors, hatches, edge_band
 
 
 net = xr.open_mfdataset(["pp/ceres_trends.nc"]).net.load()

@@ -2,7 +2,7 @@ import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
 import xarray as xr
 
-from utils.plotting import central_lon, plot_colormesh, plot_coasts_grid, plot_colorbar
+from ..utils.plotting import central_lon, plot_colormesh, plot_coasts_grid, plot_colorbar
 
 ds_trend = xr.open_mfdataset(["pp/ceres_trends.nc"])
 ann_trend = ds_trend.sel(season="ANN").load()
@@ -26,8 +26,8 @@ ax_timeseries.legend(frameon=False)
 ax_timeseries.spines["top"].set_visible(False)
 ax_timeseries.spines["right"].set_visible(False)
 
-colormap = plot_colormesh(ax_map, ann_trend.net_slope_mean)
-non_sig = abs(ann_trend.net_slope_mean) < ann_trend.net_slope_ci
+colormap = plot_colormesh(ax_map, ann_trend.net)
+non_sig = abs(ann_trend.net) < ann_trend.net_slope_ci
 ax_map.contourf(
     ann_trend.lon,
     ann_trend.lat,

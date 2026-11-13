@@ -2,15 +2,10 @@
 
 import numpy as np
 
-import scipy as sp
-from scipy.constants import speed_of_light as c
 import scipy.constants
-from scipy.constants import sigma as SB_sigma
 import metpy.calc as mpcalc
 from metpy.units import units
 
-
-from importlib import reload
 
 # create idealized moist-adiabatic profile
 def create_profile_moist(T_s, rh, p):
