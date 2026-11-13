@@ -26,8 +26,8 @@ ax_timeseries.legend(frameon=False)
 ax_timeseries.spines["top"].set_visible(False)
 ax_timeseries.spines["right"].set_visible(False)
 
-colormap = plot_colormesh(ax_map, ann_trend.net_slope_mean)
-non_sig = abs(ann_trend.net_slope_mean) < ann_trend.net_slope_ci
+colormap = plot_colormesh(ax_map, ann_trend.net)
+non_sig = abs(ann_trend.net) < ann_trend.net_slope_ci
 ax_map.contourf(
     ann_trend.lon,
     ann_trend.lat,
